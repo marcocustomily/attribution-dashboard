@@ -711,6 +711,36 @@ body{
     <div class="cc"><div class="cc-ttl">Churn Rate by Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-churn"></canvas></div></div>
     <div class="cc"><div class="cc-ttl">Avg Days Active by Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-avgd"></canvas></div></div>
   </div>
+
+  <div class="sec"><span class="sec-title">By Stamp</span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('p-stamp-tbody','paid-by-stamp')">↓ CSV</button></div>
+  </div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc">
+      <div class="cc-ttl">Top Stamps · Paid Merchants <span class="bdg">por volumen</span></div>
+      <div style="position:relative;height:380px;"><canvas id="c-p-stamp"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-ttl">Conv Rate por Stamp <span class="bdg">installs → paid</span></div>
+      <div style="position:relative;height:380px;"><canvas id="c-p-stamp-conv"></canvas></div>
+    </div>
+  </div>
+  <div class="cc" style="margin-bottom:24px;">
+    <div class="tbl-wrap"><table class="tbl" id="p-stamp-tbl">
+      <thead><tr>
+        <th onclick="srt('p-stamp-tbl',0)">Stamp</th>
+        <th class="num" onclick="srt('p-stamp-tbl',1)">Paid</th>
+        <th class="num" onclick="srt('p-stamp-tbl',2)">% del Total</th>
+        <th class="num" onclick="srt('p-stamp-tbl',3)">Installs</th>
+        <th class="num" onclick="srt('p-stamp-tbl',4)">Conv%</th>
+        <th class="num" onclick="srt('p-stamp-tbl',5)">Active</th>
+        <th class="num" onclick="srt('p-stamp-tbl',6)">Churned</th>
+        <th class="num" onclick="srt('p-stamp-tbl',7)">Churn%</th>
+        <th class="num" onclick="srt('p-stamp-tbl',8)">Avg Days</th>
+      </tr></thead>
+      <tbody id="p-stamp-tbody"></tbody>
+    </table></div>
+  </div>
 </div>
 
 <!-- LOST -->
@@ -1081,7 +1111,7 @@ function reload(from,to){
   destroyAll();clearBodies();
   _stampsTable=[];
   const si=document.getElementById('st-search');if(si)si.value='';
-  ['c-wk-all','c-wk-paid','c-p-ch','c-p-co','c-p-churn','c-p-avgd','c-l-ch','c-l-ttc','c-l-co','c-l-rsn','c-r-ttc','c-r-ttcp','c-r-rsn','c-r-ch','c-srf','c-skw','c-st-mon','c-st-top','c-st-plat'].forEach(freshCanvas);
+  ['c-wk-all','c-wk-paid','c-p-ch','c-p-co','c-p-churn','c-p-avgd','c-p-stamp','c-p-stamp-conv','c-l-ch','c-l-ttc','c-l-co','c-l-rsn','c-r-ttc','c-r-ttcp','c-r-rsn','c-r-ch','c-srf','c-skw','c-st-mon','c-st-top','c-st-plat'].forEach(freshCanvas);
   document.getElementById('loading').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('footer').style.display='none';
@@ -1097,7 +1127,7 @@ function manualRefresh(){
   const a=document.querySelector('.preset-btn.active');if(a)a.click();
 }
 function destroyAll(){Object.values(_ch).forEach(c=>{try{c.destroy();}catch(e){}});_ch={};}
-function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
+function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
 function freshCanvas(id){
   const o=document.getElementById(id);if(!o) return null;
   const n=document.createElement('canvas');n.id=id;
@@ -1334,6 +1364,35 @@ function render(data){
   const churnMax=dynMax(churnVals,5);
   mkHBar('c-p-churn',paid.churnByChannel.map(r=>r.label),churnVals,'#e03050',{min:0,max:churnMax});
   mkHBar('c-p-avgd',paid.avgDaysByChannel.map(r=>r.label),paid.avgDaysByChannel.map(r=>parseFloat(r.value)),'#d97706');
+
+  // BY STAMP — paid tab
+  if (paid.byStamp && paid.byStamp.length) {
+    const topSt = paid.byStamp.slice(0, 15);
+    mkHBar('c-p-stamp',      topSt.map(r=>r.stamp), topSt.map(r=>r.paid),    '#00a86b');
+    mkHBar('c-p-stamp-conv', topSt.map(r=>r.stamp), topSt.map(r=>parseFloat(r.convRate)), '#0891b2');
+    const psb = document.getElementById('p-stamp-tbody');
+    if (psb) {
+      psb.innerHTML = '';
+      paid.byStamp.forEach(r => {
+        const tr = document.createElement('tr');
+        const chCls = parseFloat(r.churnRate)>=50?'p-r':parseFloat(r.churnRate)>=25?'p-y':'p-g';
+        const cvCls = parseFloat(r.convRate)>=5?'p-g':parseFloat(r.convRate)>=1?'p-y':'p-r';
+        tr.innerHTML =
+          `<td><strong>${r.stamp}</strong></td>`+
+          `<td class="num" style="color:var(--green);font-weight:600;">`+
+            `<span style="cursor:pointer;text-decoration:underline dotted;" onclick="openStampDrill('${r.stamp.replace(/'/g,"\\'")}')">` +
+            `${Number(r.paid).toLocaleString()}</span></td>`+
+          `<td class="num dim">${r.pct}%</td>`+
+          `<td class="num dim">${Number(r.installs).toLocaleString()}</td>`+
+          `<td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td>`+
+          `<td class="num" style="color:var(--cyan)">${Number(r.active).toLocaleString()}</td>`+
+          `<td class="num" style="color:var(--red)">${Number(r.churned).toLocaleString()}</td>`+
+          `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
+          `<td class="num">${r.avgDays}d</td>`;
+        psb.appendChild(tr);
+      });
+    }
+  }
 
   // LOST TAB
   document.getElementById('l-imm').textContent=lost.immediate.toLocaleString();
