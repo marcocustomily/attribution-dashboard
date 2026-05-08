@@ -800,19 +800,39 @@ body{
 
 <!-- STAMPS -->
 <div class="page" id="page-stamps">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:24px;text-align:center;padding:40px;">
-    <div style="width:64px;height:64px;border-radius:16px;background:var(--accent-soft);display:grid;place-items:center;font-size:28px;">🔖</div>
-    <div>
-      <div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;">Stamps Dashboard</div>
-      <div style="font-size:14px;color:var(--text-3);max-width:380px;line-height:1.6;">El análisis de Stamps está en construcción como un dashboard separado con métricas de engagement, conversión por stamp y drill-down detallado.</div>
-    </div>
-    <a id="stamps-link" href="#" target="_blank"
-       style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;font-size:14px;text-decoration:none;transition:background .15s;"
-       onmouseover="this.style.background='var(--accent-hover)'" onmouseout="this.style.background='var(--accent)'"
-       onclick="alert('URL del Stamps Dashboard pendiente de configurar.')">
-      Abrir Stamps Dashboard →
-    </a>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-4);letter-spacing:.5px;">PRÓXIMAMENTE</div>
+  <div class="sec"><span class="sec-title">Stamps Overview</span></div>
+  <div class="g5" style="margin-bottom:24px;">
+    <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Total Installs</div><div class="card-val" id="st-total">—</div><div class="card-sub">con stamp identificado</div></div>
+    <div class="card" style="--card-accent:var(--accent);--card-color:var(--accent)"><div class="card-lbl">Shopify</div><div class="card-val" id="st-shopify">—</div><div class="card-sub">installs</div></div>
+    <div class="card" style="--card-accent:var(--yellow);--card-color:var(--yellow)"><div class="card-lbl">Etsy</div><div class="card-val" id="st-etsy">—</div><div class="card-sub">installs</div></div>
+    <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">WooCommerce</div><div class="card-val" id="st-woo">—</div><div class="card-sub">installs</div></div>
+    <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">Unique Stamps</div><div class="card-val" id="st-unique">—</div><div class="card-sub">tipos de entrada</div></div>
+  </div>
+  <div class="sec">Installs por Mes</div>
+  <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-st-mon"></canvas></div></div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">Top 20 Stamps <span class="bdg">por volumen</span></div><div style="position:relative;height:480px;"><canvas id="c-st-top"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Por Plataforma</div><div style="position:relative;height:280px;"><canvas id="c-st-plat"></canvas></div></div>
+  </div>
+  <div class="sec">Stamps Detail<div class="sec-acts"><button class="sec-act" onclick="expTbl('st-tbl','stamps')">↓ CSV</button></div></div>
+  <div class="cc"><div class="tbl-wrap"><table class="tbl" id="st-tbl-el">
+    <thead><tr>
+      <th onclick="srt('st-tbl-el',0)">Stamp</th>
+      <th class="num" onclick="srt('st-tbl-el',1)">Installs</th>
+      <th class="num" onclick="srt('st-tbl-el',2)">%</th>
+      <th class="num" onclick="srt('st-tbl-el',3)">Paid</th>
+      <th class="num" onclick="srt('st-tbl-el',4)">Conv%</th>
+      <th class="num" onclick="srt('st-tbl-el',5)">Churn%</th>
+      <th class="num" onclick="srt('st-tbl-el',6)">Avg Days</th>
+      <th class="num" onclick="srt('st-tbl-el',7)">Shopify</th>
+      <th class="num" onclick="srt('st-tbl-el',8)">Etsy</th>
+      <th class="num" onclick="srt('st-tbl-el',9)">Woo</th>
+      <th class="num" onclick="srt('st-tbl-el',10)">Other</th>
+    </tr></thead>
+    <tbody id="st-tbl"></tbody>
+  </table></div></div>
+  <div id="st-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos de Stamps en el rango seleccionado. Cargá el export semanal en el tab <strong>Stamps</strong> del sheet.
   </div>
 </div>
 
@@ -1329,6 +1349,35 @@ function render(data){
   // SURFACE
   if(surface.surfaceType.length) mkDo('c-srf',surface.surfaceType.map(r=>r.label),surface.surfaceType.map(r=>r.value));
   if(surface.surfaceKw.length) mkHBar('c-skw',surface.surfaceKw.map(r=>r.label),surface.surfaceKw.map(r=>r.value),'#0891b2');
+
+  // STAMPS
+  if(stamps) {
+    document.getElementById('st-total').textContent   = stamps.total.toLocaleString();
+    document.getElementById('st-unique').textContent  = stamps.table ? stamps.table.length.toLocaleString() : '—';
+    const shopifyPl = stamps.byPlatform.find(p=>p.label==='shopify');
+    const etsyPl    = stamps.byPlatform.find(p=>p.label==='etsy');
+    const wooPl     = stamps.byPlatform.find(p=>p.label==='woocommerce');
+    document.getElementById('st-shopify').textContent = shopifyPl ? shopifyPl.value.toLocaleString() : '0';
+    document.getElementById('st-etsy').textContent    = etsyPl    ? etsyPl.value.toLocaleString()    : '0';
+    document.getElementById('st-woo').textContent     = wooPl     ? wooPl.value.toLocaleString()     : '0';
+    if(stamps.byMonth.length)    mkLine('c-st-mon', stamps.byMonth.map(r=>r.label),    stamps.byMonth.map(r=>r.value),    '#0d6e88');
+    if(stamps.topStamps.length)  mkHBar('c-st-top', stamps.topStamps.map(r=>r.label),  stamps.topStamps.map(r=>r.value),  '#0d6e88');
+    if(stamps.byPlatform.length) mkDo('c-st-plat',  stamps.byPlatform.map(r=>r.label), stamps.byPlatform.map(r=>r.value));
+    const stb = document.getElementById('st-tbl');
+    if(stb) stamps.table.forEach(r=>{
+      const tr=document.createElement('tr');
+      const cv=parseFloat(r.convRate||0);
+      const ch=parseFloat(r.churnRate||0);
+      const cvCls=cv>=5?'p-g':cv>=1?'p-y':'p-r';
+      const chCls=ch>=50?'p-r':ch>=25?'p-y':'p-g';
+      tr.innerHTML=`<td><strong>${r.stamp}</strong></td><td class="num">${Number(r.total).toLocaleString()}</td><td class="num dim">${r.pct}%</td><td class="num">${Number(r.paid||0).toLocaleString()}</td><td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td><td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td><td class="num">${r.avgDays}d</td><td class="num">${r.shopify.toLocaleString()}</td><td class="num">${r.etsy.toLocaleString()}</td><td class="num">${r.woo.toLocaleString()}</td><td class="num">${r.other.toLocaleString()}</td>`;
+      stb.appendChild(tr);
+    });
+    document.getElementById('tb5').textContent = stamps.total.toLocaleString();
+  } else {
+    const emp = document.getElementById('st-empty');
+    if(emp) emp.style.display='block';
+  }
 
   // RETENTION
   const sa=Object.entries(funnel.churnBuckets).sort((a,b)=>b[1]-a[1]);
