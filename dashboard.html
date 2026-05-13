@@ -301,6 +301,11 @@ body{
   cursor:pointer;transition:all .15s;
 }
 .drill-exp-btn:hover{border-color:var(--border-strong);color:var(--text);}
+.drill-link{
+  cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;
+  color:inherit;transition:color .12s;
+}
+.drill-link:hover{color:var(--accent);}
 
 /* ── ALERTS ── */
 #alerts-bar{display:none;padding:10px 28px;background:var(--surface);border-bottom:1px solid var(--border);}
@@ -448,8 +453,8 @@ body{
   background:transparent;color:var(--text-3);cursor:pointer;transition:all .15s;
 }
 .gran-btn:hover{color:var(--text);}
-.gran-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
-[data-theme="dark"] .gran-btn.active{background:var(--surface-hover);box-shadow:none;}
+.gran-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:var(--shadow-sm);font-weight:600;}
+[data-theme="dark"] .gran-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:none;}
 
 /* ── TABLES ── */
 .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border-subtle);}
@@ -749,9 +754,9 @@ body{
   <div class="insights" id="ins-lost"></div>
   <div class="sec"><span class="sec-title">Non-Converters</span></div>
   <div class="bkt-grid" style="margin-bottom:24px;">
-    <div class="bkt"><div class="bkt-ico">⚡</div><div class="bkt-val" id="l-imm" style="color:var(--red)">—</div><div class="bkt-lbl">Under 1 hour</div><div class="bkt-hint">Testing or wrong fit</div></div>
-    <div class="bkt"><div class="bkt-ico">📅</div><div class="bkt-val" id="l-sh"  style="color:var(--yellow)">—</div><div class="bkt-lbl">1–7 days</div><div class="bkt-hint">Onboarding or pricing</div></div>
-    <div class="bkt"><div class="bkt-ico">📦</div><div class="bkt-val" id="l-lg"  style="color:var(--cyan)">—</div><div class="bkt-lbl">Active, not paid</div><div class="bkt-hint">Still evaluating</div></div>
+    <div class="bkt" style="cursor:pointer;" onclick="openLostBucketDrill('immediate')" title="Ver detalle"><div class="bkt-ico">⚡</div><div class="bkt-val" id="l-imm" style="color:var(--red)">—</div><div class="bkt-lbl">Under 1 hour <span style="font-size:10px;opacity:.5;">· click</span></div><div class="bkt-hint">Testing or wrong fit</div></div>
+    <div class="bkt" style="cursor:pointer;" onclick="openLostBucketDrill('shortTerm')" title="Ver detalle"><div class="bkt-ico">📅</div><div class="bkt-val" id="l-sh"  style="color:var(--yellow)">—</div><div class="bkt-lbl">1–7 days <span style="font-size:10px;opacity:.5;">· click</span></div><div class="bkt-hint">Onboarding or pricing</div></div>
+    <div class="bkt" style="cursor:pointer;" onclick="openLostBucketDrill('longTerm')" title="Ver detalle"><div class="bkt-ico">📦</div><div class="bkt-val" id="l-lg"  style="color:var(--cyan)">—</div><div class="bkt-lbl">Active, not paid <span style="font-size:10px;opacity:.5;">· click</span></div><div class="bkt-hint">Still evaluating</div></div>
   </div>
   <div class="g2" style="margin-bottom:24px;">
     <div class="cc"><div class="cc-ttl">Lost by Channel</div><div style="position:relative;height:280px;"><canvas id="c-l-ch"></canvas></div></div>
@@ -1335,7 +1340,14 @@ function render(data){
 
   // Channel table
   const cht=document.getElementById('ch-tbody');
-  funnel.byChannel.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--cyan)">${Number(r.activated).toLocaleString()}</td><td class="num">${cpill(r.activationRate)}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td><td><div class="conv-bar"><div class="conv-fill" style="width:${Math.min(parseFloat(r.convRate),100)}%"></div></div></td>`;cht.appendChild(tr);});
+  funnel.byChannel.forEach(r=>{
+    const tr=document.createElement('tr');
+    const sc=r.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=r.installs>0?`<span class="drill-link" onclick="openChannelDrill('${sc}','installs')">${Number(r.installs).toLocaleString()}</span>`:Number(r.installs).toLocaleString();
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openChannelDrill('${sc}','paid')">${Number(r.paid).toLocaleString()}</span>`:`<span style="color:var(--green)">${Number(r.paid).toLocaleString()}</span>`;
+    tr.innerHTML=`<td>${r.label}</td><td class="num">${instCell}</td><td class="num" style="color:var(--cyan)">${Number(r.activated).toLocaleString()}</td><td class="num">${cpill(r.activationRate)}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td><div class="conv-bar"><div class="conv-fill" style="width:${Math.min(parseFloat(r.convRate),100)}%"></div></div></td>`;
+    cht.appendChild(tr);
+  });
   document.getElementById('ch-cnt').textContent=funnel.byChannel.length+' canales';
 
   // Country & keyword tables
@@ -1417,9 +1429,23 @@ function render(data){
   document.getElementById('a-cpa').textContent=ads.overallCPA==='N/A'?'N/A':`$${ads.overallCPA}`;
   document.getElementById('a-paid').textContent=`${ads.paidInstallPaid} paid atribuidos`;
   const atb=document.getElementById('a-camp');
-  ads.campaignTable.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${r.installs}</td><td class="num" style="color:var(--green)">${r.paid}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;atb.appendChild(tr);});
+  ads.campaignTable.forEach(r=>{
+    const tr=document.createElement('tr');
+    const sc=r.campaign.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=r.installs>0?`<span class="drill-link" onclick="openCampaignDrill('${sc}','installs')">${r.installs}</span>`:`0`;
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openCampaignDrill('${sc}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
+    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;
+    atb.appendChild(tr);
+  });
   const ktb=document.getElementById('a-kw');
-  ads.keywordTable.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${r.installs}</td><td class="num" style="color:var(--green)">${r.paid}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;ktb.appendChild(tr);});
+  ads.keywordTable.forEach(r=>{
+    const tr=document.createElement('tr');
+    const sk=r.keyword.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=r.installs>0?`<span class="drill-link" onclick="openKeywordDrill('${sk}','installs')">${r.installs}</span>`:`0`;
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openKeywordDrill('${sk}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
+    tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;
+    ktb.appendChild(tr);
+  });
 
   // SURFACE
   if(surface.surfaceType.length) mkDo('c-srf',surface.surfaceType.map(r=>r.label),surface.surfaceType.map(r=>r.value));
@@ -1431,7 +1457,7 @@ function render(data){
     document.getElementById('st-unique').textContent  = stamps.table ? stamps.table.length.toLocaleString() : '—';
     const shopifyPl = stamps.byPlatform.find(p=>p.label==='shopify');
     const etsyPl    = stamps.byPlatform.find(p=>p.label==='etsy');
-    const wooPl     = stamps.byPlatform.find(p=>p.label==='woocommerce');
+    const wooPl     = stamps.byPlatform.find(p=>p.label==='woocommerce'||p.label==='wordpress');
     document.getElementById('st-shopify').textContent = shopifyPl ? shopifyPl.value.toLocaleString() : '0';
     document.getElementById('st-etsy').textContent    = etsyPl    ? etsyPl.value.toLocaleString()    : '0';
     document.getElementById('st-woo').textContent     = wooPl     ? wooPl.value.toLocaleString()     : '0';
@@ -1581,6 +1607,83 @@ function openPaidDrill(metric) {
       `<td class="dim">${r.firstPayDate||'—'}</td>`;
   };
   _openGenericDrill('Paid Merchants', labels[metric]||metric, _paidDetails, filters[metric], cols, renderer);
+}
+
+// ── ADS / CHANNEL / LOST DRILL-DOWNS ────────────────────
+
+// Normalizes "Search Shopify Install USA Ad06" → "Search Shopify Install USA"
+function normCamp(name){ return String(name||'').replace(/\s+Ad\d+$/i,'').trim(); }
+
+// Shared renderer for ads/channel drill-downs (includes keyword column)
+function _adsRowRenderer(r){
+  const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+  const kw=String(r.keyword||'');
+  return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+    `<td class="dim">${r.channel||'—'}</td>`+
+    `<td class="dim">${r.country||'—'}</td>`+
+    `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+    `<td class="num">${r.daysActive||0}d</td>`+
+    `<td class="dim">${r.installDate||'—'}</td>`+
+    `<td class="dim">${r.firstPayDate||'—'}</td>`+
+    `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw}">${kw||'—'}</td>`;
+}
+
+const _ADS_COLS=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Keyword'];
+
+function openCampaignDrill(campaign, type){
+  const isPaid=type==='paid';
+  const base=isPaid?_paidDetails:_funnelDetails;
+  const nc=normCamp(campaign);
+  const filter=r=>normCamp(r.campaign)===nc&&(isPaid?r.paid:true);
+  _openGenericDrill('Campaign',(isPaid?'Paid Mrchs · ':'Installs · ')+nc, base, filter, _ADS_COLS, _adsRowRenderer);
+}
+
+function openKeywordDrill(keyword, type){
+  const isPaid=type==='paid';
+  const base=isPaid?_paidDetails:_funnelDetails;
+  const kw=keyword.toLowerCase().trim();
+  const filter=r=>String(r.keyword||'').toLowerCase().trim()===kw&&(isPaid?r.paid:true);
+  _openGenericDrill('Keyword',(isPaid?'Paid Mrchs · ':'Installs · ')+keyword, base, filter, _ADS_COLS, _adsRowRenderer);
+}
+
+function openChannelDrill(channel, type){
+  const isPaid=type==='paid';
+  const base=isPaid?_paidDetails:_funnelDetails;
+  const filter=r=>r.channel===channel&&(isPaid?r.paid:true);
+  const cols=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Campaign'];
+  const renderer=r=>{
+    const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td><td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`+
+      `<td class="dim">${r.firstPayDate||'—'}</td>`+
+      `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.campaign||''}">${r.campaign||'—'}</td>`;
+  };
+  _openGenericDrill('Channel',(isPaid?'Paid Mrchs · ':'Installs · ')+channel, base, filter, cols, renderer);
+}
+
+function openLostBucketDrill(bucket){
+  const labels={immediate:'Under 1 hour',shortTerm:'1–7 days',longTerm:'Active, not paid'};
+  const filters={
+    immediate: r=>!r.paid&&r.daysActive===0,
+    shortTerm:  r=>!r.paid&&r.daysActive>=1&&r.daysActive<=7,
+    longTerm:   r=>!r.paid&&r.daysActive>7
+  };
+  const cols=['Domain','Canal','País','Estado','Días Activo','Install Date','Campaign','Keyword'];
+  const renderer=r=>{
+    const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    const kw=String(r.keyword||'');
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td><td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`+
+      `<td class="dim" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.campaign||''}">${r.campaign||'—'}</td>`+
+      `<td class="dim" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw}">${kw||'—'}</td>`;
+  };
+  _openGenericDrill('Non-Converters', labels[bucket]||bucket, _funnelDetails, filters[bucket], cols, renderer);
 }
 
 // ── STAMPS HELPERS ───────────────────────────────────────
