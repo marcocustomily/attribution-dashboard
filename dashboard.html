@@ -1614,8 +1614,14 @@ function openPaidDrill(metric) {
 
 // ── ADS / CHANNEL / LOST DRILL-DOWNS ────────────────────
 
-// Normalizes "Search Shopify Install USA Ad06" → "Search Shopify Install USA"
-function normCamp(name){ return String(name||'').replace(/\s+Ad\d+$/i,'').trim(); }
+// Normalizes any Ad0X variant → base campaign name
+// Handles: "Ad06 Search..." → strip prefix | "Search... Ad06" → strip suffix
+function normCamp(name){
+  return String(name||'')
+    .replace(/^Ad\d+\s+/i,'')   // strip leading "Ad06 "
+    .replace(/\s+Ad\d+$/i,'')   // strip trailing " Ad06"
+    .trim();
+}
 
 // Shared renderer for ads/channel drill-downs (includes keyword column)
 function _adsRowRenderer(r){
