@@ -1263,8 +1263,10 @@ function startTimer(){
 }
 
 // ── CHART FACTORIES ──────────────────────────────────────
+function _destroyChart(id){if(_ch[id]){try{_ch[id].destroy();}catch(e){}delete _ch[id];}}
 function mkLine(id,labels,vals,color){
   if(!document.getElementById(id)) return null;
+  _destroyChart(id);
   const{muted,grid}=gc();
   const c=new Chart(document.getElementById(id),{type:'line',data:{labels,datasets:[{data:vals,borderColor:color,backgroundColor:'transparent',borderWidth:2,fill:false,tension:.4,pointRadius:3,pointBackgroundColor:color,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:10}},y:{grid:{color:grid},ticks:{color:muted}}}}});
   _ch[id]=c;return c;
@@ -1272,13 +1274,16 @@ function mkLine(id,labels,vals,color){
 function mkHBar(id,labels,vals,color,opts){
   const inv=['(not set)','(not provided)','','not set','not provided'];
   const f=labels.map((l,i)=>({l,v:vals[i]})).filter(d=>!inv.includes(String(d.l).toLowerCase().trim()));
-  if(!f.length||!document.getElementById(id)) return null;
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  if(!f.length) return null;
   const{muted,grid}=gc();
   const c=new Chart(document.getElementById(id),{type:'bar',data:{labels:f.map(d=>d.l),datasets:[{data:f.map(d=>d.v),backgroundColor:color,borderRadius:3,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:grid},ticks:{color:muted},min:opts?.min,max:opts?.max},y:{grid:{display:false},ticks:{color:muted}}}}});
   _ch[id]=c;return c;
 }
 function mkVBar(id,labels,vals,color){
   if(!document.getElementById(id)) return null;
+  _destroyChart(id);
   const{muted,grid}=gc();
   const c=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:color,borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted}},y:{grid:{color:grid},ticks:{color:muted}}}}});
   _ch[id]=c;return c;
@@ -1286,7 +1291,9 @@ function mkVBar(id,labels,vals,color){
 function mkDo(id,labels,vals){
   const inv=['(not set)','(not provided)','','not set','not provided'];
   const f=labels.map((l,i)=>({l,v:vals[i]})).filter(d=>!inv.includes(String(d.l).toLowerCase().trim()));
-  if(!f.length||!document.getElementById(id)) return null;
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  if(!f.length) return null;
   const{muted}=gc();
   const c=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:f.map(d=>d.l),datasets:[{data:f.map(d=>d.v),backgroundColor:PAL,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:muted,boxWidth:8,padding:10}}}}});
   _ch[id]=c;return c;
@@ -1301,6 +1308,7 @@ function chpill(v){const n=parseFloat(v);return`<span class="pill ${n<30?'p-g':n
 function render(data){
   _data=data;
   try {
+  clearBodies();   // limpiar tablas antes de re-renderizar
   const{funnel,paid,lost,ads,surface,stamps}=data;
 
   // Tab badges
@@ -1342,6 +1350,7 @@ function render(data){
 
   // Channel table
   const cht=document.getElementById('ch-tbody');
+  cht.innerHTML='';
   funnel.byChannel.forEach(r=>{
     const tr=document.createElement('tr');
     const sc=r.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -1354,8 +1363,10 @@ function render(data){
 
   // Country & keyword tables
   const cot=document.getElementById('co-tbody');
+  cot.innerHTML='';
   funnel.byCountry.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;cot.appendChild(tr);});
   const kwt=document.getElementById('kw-tbody');
+  kwt.innerHTML='';
   funnel.byKeyword.forEach(r=>{if(!r.label||r.label==='(not set)')return;const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;kwt.appendChild(tr);});
 
   // Store details for drill-down
