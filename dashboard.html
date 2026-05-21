@@ -1435,7 +1435,7 @@ function render(data){
     const tr=document.createElement('tr');
     const sc=r.campaign.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const instCell=r.installs>0?`<span class="drill-link" onclick="openCampaignDrill('${sc}','installs')">${r.installs}</span>`:`0`;
-    const trialCell=`<span style="color:var(--cyan);font-weight:500;">${r.trial||0}</span>`;
+    const trialCell=r.trial>0?`<span class="drill-link" style="color:var(--cyan);font-weight:500;" onclick="openCampaignDrill('${sc}','trial')">${r.trial}</span>`:`<span style="color:var(--cyan)">0</span>`;
     const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openCampaignDrill('${sc}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
     tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;
     atb.appendChild(tr);
@@ -1634,11 +1634,15 @@ function _adsRowRenderer(r){
 const _ADS_COLS=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Keyword'];
 
 function openCampaignDrill(campaign, type){
-  const isPaid=type==='paid';
-  const base=isPaid?_paidDetails:_funnelDetails;
-  const nc=normCamp(campaign);
-  const filter=r=>normCamp(r.campaign)===nc&&(isPaid?r.paid:true);
-  _openGenericDrill('Campaign',(isPaid?'Paid Mrchs · ':'Installs · ')+nc, base, filter, _ADS_COLS, _adsRowRenderer);
+  const isPaid   = type==='paid';
+  const isTrial  = type==='trial';
+  const nc = normCamp(campaign);
+  let filter;
+  if (isPaid)       filter = r => normCamp(r.campaign)===nc && r.paid;
+  else if (isTrial) filter = r => normCamp(r.campaign)===nc && r.activated;
+  else              filter = r => normCamp(r.campaign)===nc;
+  const label = isPaid ? 'Paid Mrchs · ' : isTrial ? 'Trial · ' : 'Installs · ';
+  _openGenericDrill('Campaign', label+nc, _funnelDetails, filter, _ADS_COLS, _adsRowRenderer);
 }
 
 function openKeywordDrill(keyword, type){
