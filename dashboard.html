@@ -1308,7 +1308,6 @@ function chpill(v){const n=parseFloat(v);return`<span class="pill ${n<30?'p-g':n
 function render(data){
   _data=data;
   try {
-  clearBodies();   // limpiar tablas antes de re-renderizar
   const{funnel,paid,lost,ads,surface,stamps}=data;
 
   // Tab badges
@@ -1350,7 +1349,6 @@ function render(data){
 
   // Channel table
   const cht=document.getElementById('ch-tbody');
-  cht.innerHTML='';
   funnel.byChannel.forEach(r=>{
     const tr=document.createElement('tr');
     const sc=r.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -1363,10 +1361,8 @@ function render(data){
 
   // Country & keyword tables
   const cot=document.getElementById('co-tbody');
-  cot.innerHTML='';
   funnel.byCountry.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;cot.appendChild(tr);});
   const kwt=document.getElementById('kw-tbody');
-  kwt.innerHTML='';
   funnel.byKeyword.forEach(r=>{if(!r.label||r.label==='(not set)')return;const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;kwt.appendChild(tr);});
 
   // Store details for drill-down
