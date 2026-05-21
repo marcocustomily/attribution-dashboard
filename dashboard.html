@@ -789,12 +789,13 @@ body{
       <th class="num" onclick="srt('camp-tbl',2)">Clicks</th>
       <th class="num" onclick="srt('camp-tbl',3)">CTR</th>
       <th class="num" onclick="srt('camp-tbl',4)">Installs</th>
-      <th class="num" onclick="srt('camp-tbl',5)">Paid Mrchs</th>
-      <th class="num" onclick="srt('camp-tbl',6)">Conv%</th>
-      <th class="num" onclick="srt('camp-tbl',7)">CPI</th>
-      <th class="num" onclick="srt('camp-tbl',8)">CPA</th>
-      <th class="num" onclick="srt('camp-tbl',9)">Drop%</th>
-      <th class="num" onclick="srt('camp-tbl',10)">Avg Days</th>
+      <th class="num" onclick="srt('camp-tbl',5)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('camp-tbl',6)">Paid Mrchs</th>
+      <th class="num" onclick="srt('camp-tbl',7)">Conv%</th>
+      <th class="num" onclick="srt('camp-tbl',8)">CPI</th>
+      <th class="num" onclick="srt('camp-tbl',9)">CPA</th>
+      <th class="num" onclick="srt('camp-tbl',10)">Drop%</th>
+      <th class="num" onclick="srt('camp-tbl',11)">Avg Days</th>
     </tr></thead>
     <tbody id="a-camp"></tbody>
   </table></div></div>
@@ -1434,8 +1435,9 @@ function render(data){
     const tr=document.createElement('tr');
     const sc=r.campaign.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const instCell=r.installs>0?`<span class="drill-link" onclick="openCampaignDrill('${sc}','installs')">${r.installs}</span>`:`0`;
+    const trialCell=`<span style="color:var(--cyan);font-weight:500;">${r.trial||0}</span>`;
     const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openCampaignDrill('${sc}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
-    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;
+    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;
     atb.appendChild(tr);
   });
   const ktb=document.getElementById('a-kw');
