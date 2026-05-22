@@ -529,6 +529,8 @@ body{
   font-family:'JetBrains Mono',monospace;font-size:12.5px;font-feature-settings:'tnum';font-weight:500;
 }
 .tbl td:first-child{font-family:'Plus Jakarta Sans',sans-serif;font-size:13.5px;font-weight:600;color:var(--text);letter-spacing:-.1px;}
+.tbl td.nm-cell{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text-2);letter-spacing:-.05px;white-space:normal;min-width:160px;max-width:280px;}
+.tbl td:first-child{white-space:normal;min-width:180px;max-width:320px;}
 .tbl tr:last-child td{border-bottom:none;}
 .tbl tbody tr{transition:background .12s;}
 .tbl tbody tr:hover td{background:var(--surface-alt);}
@@ -1228,10 +1230,14 @@ document.addEventListener('click',e=>{
     }
   });
   // Close cr-pop on outside click
+  // Use composedPath() instead of contains() so that clicks on month buttons
+  // that trigger an innerHTML re-render (removing the target from DOM) don't
+  // accidentally close the popup.
   const pop=document.getElementById('cr-pop');
   if(pop&&pop.classList.contains('show')){
     const trigger=document.querySelector('.cr-trigger');
-    if(!pop.contains(e.target)&&!trigger?.contains(e.target)){
+    const path=e.composedPath();
+    if(!path.includes(pop)&&!(trigger&&path.includes(trigger))){
       pop.classList.remove('show');
     }
   }
@@ -1640,7 +1646,7 @@ function render(data){
     const sk=r.keyword.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const instCell=r.installs>0?`<span class="drill-link" onclick="openKeywordDrill('${sk}','installs')">${r.installs}</span>`:`0`;
     const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openKeywordDrill('${sk}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
-    tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;
+    tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="nm-cell">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;
     ktb.appendChild(tr);
   });
 
