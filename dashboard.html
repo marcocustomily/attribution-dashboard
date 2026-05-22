@@ -1389,8 +1389,9 @@ function render(data){
   // BY STAMP — paid tab
   if (paid.byStamp && paid.byStamp.length) {
     const topSt = paid.byStamp.slice(0, 15);
-    mkHBar('c-p-stamp',      topSt.map(r=>r.stamp), topSt.map(r=>r.paid),    '#00a86b');
-    mkHBar('c-p-stamp-conv', topSt.map(r=>r.stamp), topSt.map(r=>parseFloat(r.convRate)), '#0891b2');
+    const topStConv = paid.byStamp.slice().sort((a,b)=>parseFloat(b.convRate)-parseFloat(a.convRate)).slice(0,15);
+    mkHBar('c-p-stamp',      topSt.map(r=>r.stamp),     topSt.map(r=>r.paid),                    '#00a86b');
+    mkHBar('c-p-stamp-conv', topStConv.map(r=>r.stamp), topStConv.map(r=>parseFloat(r.convRate)), '#0891b2');
     const psb = document.getElementById('p-stamp-tbody');
     if (psb) {
       psb.innerHTML = '';
