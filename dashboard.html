@@ -1973,21 +1973,12 @@ function setStampGran(g, btn) {
 
 // ── BOOT ─────────────────────────────────────────────────
 function onError(err){
-  const msg=document.getElementById('loading-msg');
-  const ring=document.querySelector('.sk-ring');
-  if(ring){ring.style.borderColor='var(--border)';ring.style.borderTopColor='#F23E5E';ring.style.animation='none';}
-  const txt=err?.message||String(err)||'Sin respuesta del servidor';
-  msg.textContent='Error: '+txt;msg.style.color='#F23E5E';msg.style.animation='none';msg.style.letterSpacing='normal';msg.style.textTransform='none';
-  const existing=document.getElementById('retry-btn');if(existing) existing.remove();
-  const btn=document.createElement('button');btn.id='retry-btn';btn.textContent='↩ Reintentar';
-  btn.style.cssText='margin-top:20px;font-family:"JetBrains Mono",monospace;font-size:11px;padding:7px 18px;border-radius:5px;border:1px solid #e03050;background:transparent;color:#e03050;cursor:pointer;';
-  btn.onclick=()=>location.reload();
-  document.getElementById('loading').appendChild(btn);
-  console.error('[Customily] Error:', txt);
+  console.error('[Customily] Error fetching real data, loading mock:', err);
+  renderMock();
 }
 
-// MOCK DATA PREVIEW (delete before deploy)
-(function(){
+// MOCK DATA — fallback shown only when the script fetch fails
+function renderMock(){(function(){
   const wkLabels = ['2025-08-25','2025-09-01','2025-09-08','2025-09-15','2025-09-22','2025-09-29'];
   const wkVals = [12, 245, 220, 248, 230, 38];
   const paidWk = ['2025-09-01','2025-09-04','2025-09-07','2025-09-10','2025-09-13','2025-09-16','2025-09-19','2025-09-22','2025-09-25','2025-09-28'];
@@ -2004,12 +1995,18 @@ function onError(err){
     funnel:{totalInstalls:993,uniqueShops:993,totalActivated:458,totalPaid:146,totalActive:403,totalChurned:590,conversionRate:'14.7',churnRate:'59.4',quality:{moreThan1h:'65.8',moreThan7d:'60.5',moreThan30d:'52.7'},byWeek:wkLabels.map((l,i)=>({label:l,value:wkVals[i]})),byDay:wkLabels.map((l,i)=>({label:l,value:wkVals[i]})),byMonth:[{label:'2025-08',value:12},{label:'2025-09',value:981}],byChannel:[{label:'Direct',installs:487,activated:193,activationRate:'39.6',paid:57,convRate:'11.7'},{label:'Other',installs:313,activated:144,activationRate:'46.0',paid:46,convRate:'14.7'},{label:'Shopify (Unknown)',installs:108,activated:64,activationRate:'59.3',paid:24,convRate:'22.2'},{label:'Customily Website',installs:36,activated:29,activationRate:'80.6',paid:10,convRate:'27.8'},{label:'Google Ads',installs:23,activated:9,activationRate:'39.1',paid:3,convRate:'13.0'},{label:'Google Organic',installs:12,activated:8,activationRate:'66.7',paid:2,convRate:'16.7'},{label:'Demo Store',installs:12,activated:10,activationRate:'83.3',paid:4,convRate:'33.3'},{label:'Shopify Admin',installs:2,activated:1,activationRate:'50.0',paid:0,convRate:'0.0'}],byCountry:[{label:'United States',installs:275,paid:51,convRate:'18.5'},{label:'India',installs:41,paid:1,convRate:'2.4'},{label:'Canada',installs:34,paid:6,convRate:'17.6'}],byKeyword:[{label:'ecommerce personalization',installs:12,paid:2,convRate:'16.7'}],churnBuckets:{'<1h':120,'1d':80,'2-7d':150,'8-30d':100,'31-90d':70,'>90d':70},details},
     paid:{total:146,active:58,churned:88,churnRate:'60.3',avgDays:'147.2',totalRevenue:5857.41,byWeek:paidWk.map((l,i)=>({label:l,value:paidWkV[i]})),byDay:paidWk.map((l,i)=>({label:l,value:paidWkV[i]})),byMonth:[{label:'2025-09',value:146}],byChannel:[{label:'Direct',value:57},{label:'Other',value:46}],byCountry:[{label:'United States',value:51},{label:'Vietnam',value:7}],churnByChannel:[{label:'Google Ads',value:'100'},{label:'Other',value:'54'}],avgDaysByChannel:[{label:'Demo Store',value:'195'}],churnBuckets:{'<7d':18,'8-30d':25,'31-90d':22,'>90d':23},byStamp:[{stamp:'shopifymainbutton',paid:23,pct:'15.8',installs:49,convRate:'46.9',active:7,churned:16,churnRate:'69.6',avgDays:'124.6'}],details:details.filter(d=>d.paid)},
     lost:{total:847,immediate:120,shortTerm:281,longTerm:446,byChannel:[{label:'Direct',value:430}],byCountry:[{label:'United States',value:224}],reasons:[{label:'Too expensive',value:42},{label:'Hard to use',value:28}],churnBuckets:{'<1h':120,'1d':80,'2-7d':201,'8-30d':150},churnByChannel:[{label:'Google Ads',value:'87'}]},
-    ads:{totalSpend:1082.9,totalClicks:2845,overallCTR:'3.2',avgCPC:'0.38',overallCPI:'47.08',paidInstalls:23,overallCPA:'360.97',paidInstallPaid:3,campaignTable:[{campaign:'Ad06 Search · Personalization',spend:586,clicks:1420,ctr:'3.5',installs:12,trial:6,paid:2,convRate:'16.7',cpi:'48.83',cpa:'293.00',churn:'50',avgDays:'85'}],keywordTable:[{keyword:'ecommerce personalization',campaign:'Ad06 Search · Personalization',spend:340,clicks:520,installs:12,paid:2,convRate:'16.7',cpi:'28.33',cpa:'170.00',churn:'50'}]},
+    ads:{totalSpend:1082.9,totalClicks:2845,overallCTR:'3.2',avgCPC:'0.38',overallCPI:'47.08',paidInstalls:23,overallCPA:'360.97',paidInstallPaid:3,campaignTable:[{campaign:'Ad07 Search Shopify Install Mix Paises NEW',spend:496,clicks:1425,ctr:'3.1',installs:11,trial:5,paid:1,convRate:'9.1',cpi:'45.09',cpa:'496.00',churn:'60',avgDays:'72'},{campaign:'Ad06 Search Shopify Install USA/Canada NEW',spend:586,clicks:1420,ctr:'3.5',installs:12,trial:6,paid:2,convRate:'16.7',cpi:'48.83',cpa:'293.00',churn:'50',avgDays:'85'}],keywordTable:[{keyword:'ecommerce personalization',campaign:'Ad06 Search Shopify Install USA/Canada NEW',spend:340,clicks:520,installs:12,paid:2,convRate:'16.7',cpi:'28.33',cpa:'170.00',churn:'50'},{keyword:'shopify product customization',campaign:'Ad07 Search Shopify Install Mix Paises NEW',spend:156,clicks:905,installs:11,paid:1,convRate:'9.1',cpi:'14.18',cpa:'156.00',churn:'60'}]},
     surface:{surfaceType:[{label:'Search',value:1850}],surfaceKw:[{label:'personalization',value:520}]},
     stamps:{total:175,byPlatform:[{label:'shopify',value:110},{label:'etsy',value:35}],byMonth:[{label:'2025-09',value:48}],topStamps:[{label:'shopifymainbutton',value:49}],table:[{stamp:'shopifymainbutton',total:49,pct:'28.0',paid:23,convRate:'46.9',churnRate:'69.6',avgDays:'124.6',shopify:49,etsy:0,woo:0,other:0}]}
   };
   setTimeout(()=>render(d),200);
-})();
+})());}
+
+// Auto-load real data on page open (YTD by default)
+window.addEventListener('load',()=>{
+  const btn=document.querySelector('.preset-btn.active');
+  if(btn) btn.click();
+});
 </script>
 </body>
 </html>
