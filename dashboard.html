@@ -1342,7 +1342,7 @@ function setGran(s,g,btn){
   const td=g==='daily'?(_data[dk].byDay||bw):g==='weekly'?bw:(_data[dk].byMonth||aggMo(bw));
   if(_ch[id]){_ch[id].destroy();delete _ch[id];}
   freshCanvas(id);
-  _ch[id]=mkLine(id,td.map(r=>r.label),td.map(r=>r.value),col);
+  _ch[id]=mkLine(id,td.map(r=>r.label),td.map(r=>r.value),col,g);
 }
 function switchTab(name,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -1449,7 +1449,7 @@ function startTimer(){
 // ── CHART FACTORIES ──────────────────────────────────────
 function _destroyChart(id){if(_ch[id]){try{_ch[id].destroy();}catch(e){}delete _ch[id];}}
 const _ttip={backgroundColor:'#0F1432',titleColor:'#fff',bodyColor:'#fff',titleFont:{family:"'Plus Jakarta Sans'",weight:700,size:12},bodyFont:{family:"'JetBrains Mono'",size:11},padding:10,cornerRadius:9,displayColors:false,borderColor:'rgba(255,255,255,.08)',borderWidth:1};
-function mkLine(id,labels,vals,color){
+function mkLine(id,labels,vals,color,gran){
   if(!document.getElementById(id)) return null;
   _destroyChart(id);
   const{muted,grid}=gc();
@@ -1458,7 +1458,13 @@ function mkLine(id,labels,vals,color){
   const grad=ctx.createLinearGradient(0,0,0,260);
   grad.addColorStop(0,color+'33');
   grad.addColorStop(1,color+'00');
-  const c=new Chart(cv,{type:'line',data:{labels,datasets:[{data:vals,borderColor:color,backgroundColor:grad,borderWidth:2.5,fill:true,tension:.4,pointRadius:3,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,pointHoverRadius:6,pointHoverBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:_ttip},scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:10}},y:{grid:{color:grid,drawBorder:false},ticks:{color:muted}}}}});
+  const n=labels.length;
+  // Adjust point size and tick density based on granularity / data density
+  const ptRadius = gran==='daily' ? (n>60?0:n>30?1:2) : gran==='monthly' ? 4 : 3;
+  const ptHover  = gran==='daily' ? 5 : 6;
+  const maxTicks = gran==='daily' ? Math.min(n,20) : gran==='monthly' ? 12 : 10;
+  const maxRot   = gran==='daily' ? 45 : 0;
+  const c=new Chart(cv,{type:'line',data:{labels,datasets:[{data:vals,borderColor:color,backgroundColor:grad,borderWidth:2.5,fill:true,tension:.4,pointRadius:ptRadius,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,pointHoverRadius:ptHover,pointHoverBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:_ttip},scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:maxTicks,maxRotation:maxRot,minRotation:0}},y:{grid:{color:grid,drawBorder:false},ticks:{color:muted}}}}});
   _ch[id]=c;return c;
 }
 function mkHBar(id,labels,vals,color,opts){
@@ -1962,7 +1968,7 @@ function setStampGran(g, btn) {
            :                   s.byMonth;
   if (_ch['c-st-mon']) { _ch['c-st-mon'].destroy(); delete _ch['c-st-mon']; }
   freshCanvas('c-st-mon');
-  _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), '#06B6D4');
+  _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), '#06B6D4', g);
 }
 
 // ── BOOT ─────────────────────────────────────────────────
