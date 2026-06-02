@@ -906,6 +906,8 @@ body{
         <th onclick="srt('ts-tbl-el',0)">Canal (source / medium)</th>
         <th class="num" onclick="srt('ts-tbl-el',1)">Installs</th>
         <th class="num" onclick="srt('ts-tbl-el',2)">%</th>
+        <th class="num" onclick="srt('ts-tbl-el',3)">Trial</th>
+        <th class="num" onclick="srt('ts-tbl-el',4)">Trial%</th>
       </tr></thead>
       <tbody id="ts-tbl"></tbody>
     </table></div>
@@ -915,7 +917,14 @@ body{
   </div>
 
   <div class="sec" style="margin-top:8px;">Shopify Keywords
-    <div class="sec-acts"><button class="sec-act" onclick="expTbl('ts-kw-el','shopify_keywords')">↓ CSV</button></div>
+    <div class="sec-acts">
+      <div class="gran-tog" style="margin-right:8px;">
+        <button class="gran-btn active" id="kw-f-all"     onclick="filterKwTable('all',this)">All</button>
+        <button class="gran-btn"        id="kw-f-organic" onclick="filterKwTable('organic',this)">Organic</button>
+        <button class="gran-btn"        id="kw-f-cpc"     onclick="filterKwTable('cpc',this)">CPC</button>
+      </div>
+      <button class="sec-act" onclick="expTbl('ts-kw-el','shopify_keywords')">↓ CSV</button>
+    </div>
   </div>
   <div class="cc">
     <div class="tbl-wrap"><table class="tbl" id="ts-kw-el">
@@ -1561,22 +1570,32 @@ function render(data){
     const tstb = document.getElementById('ts-tbl');
     tstb.innerHTML = '';
     ts.forEach(r => {
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const trialCell = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrill({keyword:${JSON.stringify(r.canal)},type:'canal',installs:${r.installs},trials:${r.trials},shops:${JSON.stringify(r.shops.filter(s=>true))}},'trial')">${r.trials}</span>`
+        : `<span style="color:var(--green)">0</span>`;
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td>`;
+      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
       tstb.appendChild(tr);
     });
     const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
+    const totTrials   = ts.reduce((s,r)=>s+(r.trials||0),0);
+    const totTrialPct = totInstalls > 0 ? ((totTrials/totInstalls)*100).toFixed(1) : '0.0';
     const totRow = document.createElement('tr');
     totRow.style.fontWeight='700';
-    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td>`;
+    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials}</td><td class="num">${totTrialPct}%</td>`;
     tstb.appendChild(totRow);
     document.getElementById('ts-empty').style.display='none';
   } else {
     document.getElementById('ts-empty').style.display='block';
   }
 
+  // Build global trial domains set (sent from backend)
+  window._tsTrialDomains = new Set((data.trialDomains||[]).map(s=>s.toLowerCase().trim()));
+
   // SHOPIFY KEYWORDS
   const skw = data.shopifyKeywords || [];
+  var _skwAllRows = skw; // keep full list for filtering
   if(skw.length) {
     const kwtb = document.getElementById('ts-kw-tbl');
     kwtb.innerHTML = '';
@@ -1588,7 +1607,10 @@ function render(data){
       tr.style.cursor = 'pointer';
       tr.title = 'Ver stores';
       const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
-      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrill(${JSON.stringify(r)})">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num" style="color:var(--green)">${r.trials}</td><td class="num">${cpill(trialPct)}</td>`;
+      const trialClick = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrill(${JSON.stringify(r)},'trial')">${r.trials}</span>`
+        : `<span style="color:var(--green)">0</span>`;
+      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrill(${JSON.stringify(r)},'all')">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num">${trialClick}</td><td class="num">${cpill(trialPct)}</td>`;
       kwtb.appendChild(tr);
     });
     document.getElementById('ts-kw-empty').style.display='none';
@@ -1630,19 +1652,48 @@ function closeDrill(){
 
 // ── SHOPIFY KEYWORD DRILL ─────────────────────────────────
 var _kwDrillData = null;
-function openKwDrill(row) {
+var _kwDrillMode = 'all';
+function openKwDrill(row, mode) {
   _kwDrillData = row;
-  document.getElementById('kw-modal-title').textContent = row.keyword || '(not provided)';
-  document.getElementById('kw-modal-sub').textContent = (row.type === 'cpc' ? 'CPC' : 'Organic') + ' · ' + row.installs + ' installs';
-  const tbody = document.getElementById('kw-drill-tbody');
-  tbody.innerHTML = '';
-  (row.shops || []).forEach(s => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="mono" style="font-size:12px;">${s}</td>`;
-    tbody.appendChild(tr);
-  });
+  _kwDrillMode = mode || 'all';
+  const typeLabel = row.type === 'cpc' ? 'CPC' : row.type === 'organic' ? 'Organic' : row.type || 'Canal';
+  document.getElementById('kw-modal-title').textContent = row.keyword || row.canal || '(not provided)';
+  _renderKwDrillBody();
   document.getElementById('kw-modal').style.display = 'block';
   document.body.style.overflow = 'hidden';
+}
+function _normDomain(s) {
+  return String(s||'').toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'').trim();
+}
+function _renderKwDrillBody() {
+  const row = _kwDrillData;
+  const mode = _kwDrillMode;
+  const allShops = row.shops || [];
+  const td = window._tsTrialDomains || new Set();
+  let shops = allShops;
+  if(mode === 'trial') shops = allShops.filter(s => td.has(_normDomain(s)));
+  const typeLabel = row.type === 'cpc' ? 'CPC' : row.type === 'organic' ? 'Organic' : (row.type||'');
+  const modeLabel = mode === 'trial' ? 'trial' : 'installs';
+  document.getElementById('kw-modal-sub').textContent = (typeLabel ? typeLabel + ' · ' : '') + shops.length + ' ' + modeLabel;
+  const tbody = document.getElementById('kw-drill-tbody');
+  tbody.innerHTML = '';
+  shops.forEach(s => {
+    const isTrial = td.has(_normDomain(s));
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="mono" style="font-size:12px;">${s}${isTrial&&mode!=='trial' ? ' <span style="font-size:10px;padding:1px 6px;border-radius:100px;background:var(--green-soft);color:var(--green);">trial</span>' : ''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function filterKwTable(type, btn) {
+  document.querySelectorAll('#kw-f-all,#kw-f-organic,#kw-f-cpc').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const rows = document.querySelectorAll('#ts-kw-tbl tr');
+  rows.forEach(tr => {
+    if(type === 'all') { tr.style.display=''; return; }
+    // type pill is in 2nd cell — check text
+    const pill = tr.cells[1] && tr.cells[1].textContent.trim().toLowerCase();
+    tr.style.display = (pill === type) ? '' : 'none';
+  });
 }
 function closeKwDrill() {
   document.getElementById('kw-modal').style.display = 'none';
