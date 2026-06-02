@@ -1577,30 +1577,86 @@ function render(data){
     if(emp) emp.style.display='block';
   }
   // TRAFFIC SOURCES (BigQuery)
-  const ts = data.trafficSources || [];
-  document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
+  const tsRaw = data.trafficSources || [];
+  const kwRaw = data.shopifyKeywords || [];
+
+  // En la tabla principal de Traffic Sources, Shopify App Store debe mostrarse separado
+  // como Shopify Organic y Shopify Ads. Si el backend trae "Shopify (Unknown)",
+  // usamos shopifyKeywords para abrir ese bucket por type: organic/cpc.
+  const _mergeTrafficRows = rows => {
+    const map = new Map();
+    rows.forEach(r => {
+      const canal = String(r.canal || 'Other').trim() || 'Other';
+      const key = canal.toLowerCase();
+      if(!map.has(key)) map.set(key, {canal, installs:0, trials:0, shops:[]});
+      const cur = map.get(key);
+      cur.installs += Number(r.installs || 0);
+      cur.trials += Number(r.trials || 0);
+      if(Array.isArray(r.shops)) cur.shops.push(...r.shops);
+    });
+    return [...map.values()];
+  };
+  const _isGenericShopifyBucket = r => {
+    const c = String(r.canal || '').toLowerCase();
+    if(c.includes('admin')) return false;
+    return c.includes('shopify') || c.includes('apps.shopify.com');
+  };
+  const _kwToTrafficRow = (type, label) => {
+    const rows = kwRaw.filter(r => String(r.type || '').toLowerCase() === type);
+    return {
+      canal: label,
+      installs: rows.reduce((s,r)=>s+Number(r.installs||0),0),
+      trials: rows.reduce((s,r)=>s+Number(r.trials||0),0),
+      shops: rows.flatMap(r=>Array.isArray(r.shops)?r.shops:[])
+    };
+  };
+
+  let ts = tsRaw;
+  if(kwRaw.length) {
+    const baseRows = tsRaw.filter(r => !_isGenericShopifyBucket(r));
+    const splitRows = [_kwToTrafficRow('organic','Shopify Organic'), _kwToTrafficRow('cpc','Shopify Ads')]
+      .filter(r => r.installs > 0 || r.trials > 0);
+    ts = _mergeTrafficRows([...baseRows, ...splitRows]);
+  } else {
+    ts = _mergeTrafficRows(tsRaw.map(r => {
+      const c = String(r.canal || '').toLowerCase();
+      let canal = r.canal;
+      if(c.includes('shopify') || c.includes('apps.shopify.com')) {
+        if(c.includes('cpc') || c.includes('ads') || c.includes('paid')) canal = 'Shopify Ads';
+        else if(c.includes('admin')) canal = 'Shopify Admin';
+        else canal = 'Shopify Organic';
+      }
+      return {...r, canal};
+    }));
+  }
+
+  ts.sort((a,b)=>Number(b.installs||0)-Number(a.installs||0));
+  const tsTotalInstalls = ts.reduce((s,r)=>s+Number(r.installs||0),0);
+  document.getElementById('tb6').textContent = tsTotalInstalls ? tsTotalInstalls.toLocaleString() : '—';
   if(ts.length) {
     mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
     mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
     const tstb = document.getElementById('ts-tbl');
     tstb.innerHTML = '';
     ts.forEach(r => {
-      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const installs = Number(r.installs || 0);
+      const trials = Number(r.trials || 0);
+      const pct = tsTotalInstalls > 0 ? ((installs/tsTotalInstalls)*100).toFixed(1) : '0.0';
+      const trialPct = installs > 0 ? ((trials/installs)*100).toFixed(1) : '0.0';
       const _tsIdx = _tsDrillRows.length;
       _tsDrillRows.push(r);
-      const trialCell = r.trials > 0
-        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${r.trials}</span>`
+      const trialCell = trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${trials.toLocaleString()}</span>`
         : `<span style="color:var(--green)">0</span>`;
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
+      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${installs.toLocaleString()}</td><td class="num">${pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
       tstb.appendChild(tr);
     });
-    const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
-    const totTrials   = ts.reduce((s,r)=>s+(r.trials||0),0);
-    const totTrialPct = totInstalls > 0 ? ((totTrials/totInstalls)*100).toFixed(1) : '0.0';
+    const totTrials = ts.reduce((s,r)=>s+Number(r.trials||0),0);
+    const totTrialPct = tsTotalInstalls > 0 ? ((totTrials/tsTotalInstalls)*100).toFixed(1) : '0.0';
     const totRow = document.createElement('tr');
     totRow.style.fontWeight='700';
-    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials}</td><td class="num">${totTrialPct}%</td>`;
+    totRow.innerHTML = `<td>Total</td><td class="num">${tsTotalInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials.toLocaleString()}</td><td class="num">${totTrialPct}%</td>`;
     tstb.appendChild(totRow);
     document.getElementById('ts-empty').style.display='none';
   } else {
