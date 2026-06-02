@@ -227,6 +227,7 @@ body{
 .tab.t-ads.active{border-bottom-color:var(--yellow);}
 .tab.t-ret.active{border-bottom-color:var(--purple);}
 .tab.t-stamps.active{border-bottom-color:#0d6e88;}
+.tab.t-traffic.active{border-bottom-color:var(--purple);}
 .tab-bdg{
   font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;
   padding:2px 7px;border-radius:100px;
@@ -239,6 +240,7 @@ body{
 .tab.t-ads.active .tab-bdg{background:var(--yellow-soft);color:var(--yellow);}
 .tab.t-ret.active .tab-bdg{background:var(--purple-soft);color:var(--purple);}
 .tab.t-stamps.active .tab-bdg{background:var(--cyan-soft);color:var(--cyan);}
+.tab.t-traffic.active .tab-bdg{background:var(--purple-soft);color:var(--purple);}
 
 /* ── STAMP SEARCH ── */
 .st-search-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
@@ -639,6 +641,7 @@ body{
   <div class="tab t-ads"    onclick="switchTab('ads',this)">Google Ads <span class="tab-bdg" id="tb3">—</span></div>
   <div class="tab t-ret"    onclick="switchTab('retention',this)">Retention <span class="tab-bdg" id="tb4">—</span></div>
   <div class="tab t-stamps" onclick="switchTab('stamps',this)">Stamps <span class="tab-bdg" id="tb5">—</span></div>
+  <div class="tab t-traffic" onclick="switchTab('traffic',this)">Traffic Sources <span class="tab-bdg" id="tb6">—</span></div>
 </div>
 <div id="alerts-bar"><div class="al-inner" id="al-inner"></div></div>
 
@@ -887,6 +890,31 @@ body{
   </div>
 </div>
 
+<!-- TRAFFIC SOURCES -->
+<div class="page" id="page-traffic">
+  <div class="sec"><span class="sec-title">Traffic Sources — Installs by Channel</span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('ts-tbl-el','traffic_sources')">↓ CSV</button></div>
+  </div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">Installs por Canal</div><div style="position:relative;height:400px;"><canvas id="c-ts-bar"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Distribución %</div><div style="position:relative;height:400px;"><canvas id="c-ts-pie"></canvas></div></div>
+  </div>
+  <div class="sec">Detalle por Canal</div>
+  <div class="cc">
+    <div class="tbl-wrap"><table class="tbl" id="ts-tbl-el">
+      <thead><tr>
+        <th onclick="srt('ts-tbl-el',0)">Canal (source / medium)</th>
+        <th class="num" onclick="srt('ts-tbl-el',1)">Installs</th>
+        <th class="num" onclick="srt('ts-tbl-el',2)">%</th>
+      </tr></thead>
+      <tbody id="ts-tbl"></tbody>
+    </table></div>
+  </div>
+  <div id="ts-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos de BigQuery para el rango seleccionado. Verificá que la API de BigQuery esté habilitada en Apps Script.
+  </div>
+</div>
+
 <!-- DRILL-DOWN MODAL -->
 <div id="drill-modal" onclick="if(event.target===this)closeDrill()">
   <div class="drill-box">
@@ -1079,8 +1107,8 @@ function cv(el){
 function toggleSh(){document.getElementById('smod').classList.toggle('show');}
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
-  const ts=['funnel','paid','lost','ads','retention','stamps'];
-  if(e.key>='1'&&e.key<='6')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
+  const ts=['funnel','paid','lost','ads','retention','stamps','traffic'];
+  if(e.key>='1'&&e.key<='7')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
   if(e.key==='r'||e.key==='R') manualRefresh();
   if(e.key==='Escape') document.getElementById('smod').classList.remove('show');
 });
@@ -1482,6 +1510,30 @@ function render(data){
   } else {
     const emp = document.getElementById('st-empty');
     if(emp) emp.style.display='block';
+  }
+
+  // TRAFFIC SOURCES (BigQuery)
+  const ts = data.trafficSources || [];
+  document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
+  if(ts.length) {
+    const tsColors=['#6840d4','#2454f7','#0f8f5e','#a36206','#c53050','#0d6e88','#3d6fff','#9b5de5','#00a86b','#e03050','#ffb300','#00bcd4','#ff7043','#8d6e63','#546e7a'];
+    mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
+    mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
+    const tstb = document.getElementById('ts-tbl');
+    tstb.innerHTML = '';
+    ts.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td>`;
+      tstb.appendChild(tr);
+    });
+    const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
+    const totRow = document.createElement('tr');
+    totRow.style.fontWeight='700';
+    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td>`;
+    tstb.appendChild(totRow);
+    document.getElementById('ts-empty').style.display='none';
+  } else {
+    document.getElementById('ts-empty').style.display='block';
   }
 
   // RETENTION
