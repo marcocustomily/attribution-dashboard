@@ -1199,10 +1199,10 @@ function reload(from,to){
   document.getElementById('app').style.display='none';
   document.getElementById('footer').style.display='none';
   document.getElementById('alerts-bar').style.display='none';
-  let url=_EXEC_URL+'?json=1';
+  let url=_EXEC_URL+'?json=1&_t='+Date.now();
   if(from) url+='&from='+encodeURIComponent(from);
   if(to)   url+='&to='+encodeURIComponent(to);
-  fetch(url,{redirect:'follow'}).then(r=>r.json()).then(render).catch(err=>onError(String(err)));
+  fetch(url,{redirect:'follow',cache:'no-store'}).then(r=>r.json()).then(render).catch(err=>onError(String(err)));
 }
 function manualRefresh(){
   const b=document.getElementById('rfbtn');b.classList.add('loading');
@@ -1564,15 +1564,17 @@ function render(data){
   const ts = data.trafficSources || [];
   document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
   if(ts.length) {
-    const tsColors=['#6840d4','#2454f7','#0f8f5e','#a36206','#c53050','#0d6e88','#3d6fff','#9b5de5','#00a86b','#e03050','#ffb300','#00bcd4','#ff7043','#8d6e63','#546e7a'];
     mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
     mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
     const tstb = document.getElementById('ts-tbl');
     tstb.innerHTML = '';
+    window._tsDrillRows = [];
     ts.forEach(r => {
       const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const _tsIdx = _tsDrillRows.length;
+      _tsDrillRows.push(r);
       const trialCell = r.trials > 0
-        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrill({keyword:${JSON.stringify(r.canal)},type:'canal',installs:${r.installs},trials:${r.trials},shops:${JSON.stringify(r.shops.filter(s=>true))}},'trial')">${r.trials}</span>`
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${r.trials}</span>`
         : `<span style="color:var(--green)">0</span>`;
       const tr = document.createElement('tr');
       tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
@@ -1599,6 +1601,7 @@ function render(data){
   if(skw.length) {
     const kwtb = document.getElementById('ts-kw-tbl');
     kwtb.innerHTML = '';
+    window._kwDrillRows = [];
     skw.forEach(r => {
       const typePill = r.type === 'cpc'
         ? `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--yellow-soft);color:var(--yellow);font-weight:600;">CPC</span>`
@@ -1607,10 +1610,12 @@ function render(data){
       tr.style.cursor = 'pointer';
       tr.title = 'Ver stores';
       const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const _kwIdx = _kwDrillRows.length;
+      _kwDrillRows.push(r);
       const trialClick = r.trials > 0
-        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrill(${JSON.stringify(r)},'trial')">${r.trials}</span>`
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrillByIdx(${_kwIdx},'trial')">${r.trials}</span>`
         : `<span style="color:var(--green)">0</span>`;
-      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrill(${JSON.stringify(r)},'all')">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num">${trialClick}</td><td class="num">${cpill(trialPct)}</td>`;
+      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrillByIdx(${_kwIdx},'all')">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num">${trialClick}</td><td class="num">${cpill(trialPct)}</td>`;
       kwtb.appendChild(tr);
     });
     document.getElementById('ts-kw-empty').style.display='none';
@@ -1683,6 +1688,16 @@ function _renderKwDrillBody() {
     tr.innerHTML = `<td class="mono" style="font-size:12px;">${s}${isTrial&&mode!=='trial' ? ' <span style="font-size:10px;padding:1px 6px;border-radius:100px;background:var(--green-soft);color:var(--green);">trial</span>' : ''}</td>`;
     tbody.appendChild(tr);
   });
+}
+function openKwDrillByIdx(idx, mode) {
+  const row = window._kwDrillRows && window._kwDrillRows[idx];
+  if(!row) return;
+  openKwDrill(row, mode);
+}
+function openTsDrillByIdx(idx, mode) {
+  const row = window._tsDrillRows && window._tsDrillRows[idx];
+  if(!row) return;
+  openKwDrill(row, mode);
 }
 function filterKwTable(type, btn) {
   document.querySelectorAll('#kw-f-all,#kw-f-organic,#kw-f-cpc').forEach(b=>b.classList.remove('active'));
