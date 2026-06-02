@@ -913,6 +913,45 @@ body{
   <div id="ts-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
     No hay datos de BigQuery para el rango seleccionado. Verificá que la API de BigQuery esté habilitada en Apps Script.
   </div>
+
+  <div class="sec" style="margin-top:8px;">Shopify Keywords
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('ts-kw-el','shopify_keywords')">↓ CSV</button></div>
+  </div>
+  <div class="cc">
+    <div class="tbl-wrap"><table class="tbl" id="ts-kw-el">
+      <thead><tr>
+        <th onclick="srt('ts-kw-el',0)">Keyword</th>
+        <th onclick="srt('ts-kw-el',1)">Tipo</th>
+        <th class="num" onclick="srt('ts-kw-el',2)">Installs</th>
+        <th class="num" onclick="srt('ts-kw-el',3)">Trial</th>
+        <th class="num" onclick="srt('ts-kw-el',4)">Trial%</th>
+      </tr></thead>
+      <tbody id="ts-kw-tbl"></tbody>
+    </table></div>
+  </div>
+  <div id="ts-kw-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos de keywords de Shopify en el rango seleccionado.
+  </div>
+</div>
+
+<!-- TRAFFIC KEYWORD DRILL MODAL -->
+<div id="kw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow-y:auto;" onclick="if(event.target===this)closeKwDrill()">
+  <div style="background:var(--surface);border-radius:14px;max-width:680px;margin:60px auto;padding:28px;box-shadow:var(--shadow-lg);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;" id="kw-modal-title">—</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:3px;" id="kw-modal-sub">—</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="sec-act" onclick="expKwDrill()">↓ CSV</button>
+        <button class="drill-close" onclick="closeKwDrill()">✕</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl" id="kw-drill-tbl">
+      <thead><tr><th onclick="srt('kw-drill-tbl',0)">Store (shop_url)</th></tr></thead>
+      <tbody id="kw-drill-tbody"></tbody>
+    </table></div>
+  </div>
 </div>
 
 <!-- DRILL-DOWN MODAL -->
@@ -1536,6 +1575,27 @@ function render(data){
     document.getElementById('ts-empty').style.display='block';
   }
 
+  // SHOPIFY KEYWORDS
+  const skw = data.shopifyKeywords || [];
+  if(skw.length) {
+    const kwtb = document.getElementById('ts-kw-tbl');
+    kwtb.innerHTML = '';
+    skw.forEach(r => {
+      const typePill = r.type === 'cpc'
+        ? `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--yellow-soft);color:var(--yellow);font-weight:600;">CPC</span>`
+        : `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--green-soft);color:var(--green);font-weight:600;">Organic</span>`;
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.title = 'Ver stores';
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrill(${JSON.stringify(r)})">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num" style="color:var(--green)">${r.trials}</td><td class="num">${cpill(trialPct)}</td>`;
+      kwtb.appendChild(tr);
+    });
+    document.getElementById('ts-kw-empty').style.display='none';
+  } else {
+    document.getElementById('ts-kw-empty').style.display='block';
+  }
+
   // RETENTION
   const sa=Object.entries(funnel.churnBuckets).sort((a,b)=>b[1]-a[1]);
   const sp=Object.entries(paid.churnBuckets).sort((a,b)=>b[1]-a[1]);
@@ -1566,6 +1626,36 @@ function render(data){
 function closeDrill(){
   document.getElementById('drill-modal').classList.remove('show');
   document.body.style.overflow='';
+}
+
+// ── SHOPIFY KEYWORD DRILL ─────────────────────────────────
+var _kwDrillData = null;
+function openKwDrill(row) {
+  _kwDrillData = row;
+  document.getElementById('kw-modal-title').textContent = row.keyword || '(not provided)';
+  document.getElementById('kw-modal-sub').textContent = (row.type === 'cpc' ? 'CPC' : 'Organic') + ' · ' + row.installs + ' installs';
+  const tbody = document.getElementById('kw-drill-tbody');
+  tbody.innerHTML = '';
+  (row.shops || []).forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="mono" style="font-size:12px;">${s}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('kw-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeKwDrill() {
+  document.getElementById('kw-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function expKwDrill() {
+  if (!_kwDrillData) return;
+  const rows = (_kwDrillData.shops || []).map(s => `"${s}"`).join('\n');
+  const csv = 'shop_url\n' + rows;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = `kw-${(_kwDrillData.keyword||'keyword').replace(/\s+/g,'-')}.csv`;
+  a.click();
 }
 
 function expDrill(){
