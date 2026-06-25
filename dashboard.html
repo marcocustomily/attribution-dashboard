@@ -40,6 +40,7 @@
   --header-bg:rgba(7,8,16,.85);
   --grid-line:rgba(255,255,255,.04);
 }
+
 *{margin:0;padding:0;box-sizing:border-box;}
 *:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
 html{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;}
@@ -55,12 +56,14 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 .mono,.font-mono{font-family:'JetBrains Mono',ui-monospace,'SF Mono',monospace;font-feature-settings:'tnum','zero';}
+
 /* ── LOADING ── */
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:999;}
 .sk-ring{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .sk-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);letter-spacing:1.4px;text-transform:uppercase;animation:blink 1.4s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:.5}50%{opacity:1}}
+
 /* ── HEADER ── */
 .header{
   position:sticky;top:0;z-index:100;
@@ -81,6 +84,7 @@ body{
 .logo-mark svg{width:16px;height:16px;}
 .logo-name{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.2px;line-height:1.2;}
 .logo-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:.3px;margin-top:2px;}
+
 .hdr-center{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .range-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap;}
 .presets{display:inline-flex;gap:1px;background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:3px;}
@@ -93,6 +97,7 @@ body{
 .preset-btn:hover{color:var(--text);}
 .preset-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
 [data-theme="dark"] .preset-btn.active{background:var(--surface-hover);box-shadow:none;}
+
 .custom-range{display:none;align-items:center;gap:6px;position:relative;}
 .custom-range.show{display:flex;}
 .cr-trigger{
@@ -135,6 +140,7 @@ body{
   cursor:pointer;
 }
 .dt-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);}
+
 /* ── MONTH PICKER ── */
 .mp-toggle{
   display:flex;align-items:center;justify-content:space-between;
@@ -176,10 +182,12 @@ body{
 .mp-m:hover:not(.mp-dis):not(.mp-sel){background:var(--surface-alt);color:var(--text);}
 .mp-m.mp-sel{background:var(--accent);color:#fff;font-weight:700;}
 .mp-m.mp-dis{opacity:.3;cursor:default;}
+
 .hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .last-upd{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);white-space:nowrap;display:flex;align-items:center;gap:6px;}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pulse 2s ease-in-out infinite;}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,143,94,.4)}50%{box-shadow:0 0 0 4px transparent}}
+
 .hdr-btn{
   display:inline-flex;align-items:center;gap:6px;
   font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;
@@ -191,9 +199,11 @@ body{
 .hdr-btn.icon-only{padding:7px 9px;}
 .hdr-btn.loading .rfi{animation:spin .7s linear infinite;}
 .rfi{font-size:13px;}
+
 .theme-tog{display:inline-flex;align-items:center;gap:1px;padding:3px;border-radius:8px;border:1px solid var(--border);background:var(--surface);}
 .t-btn{font-size:13px;width:28px;height:26px;border-radius:5px;border:none;background:transparent;cursor:pointer;display:grid;place-items:center;transition:all .15s;color:var(--text-3);}
 .t-btn:hover{color:var(--text);background:var(--surface-alt);}
+
 /* ── TABS ── */
 .tabs{
   position:sticky;top:64px;z-index:99;
@@ -231,6 +241,7 @@ body{
 .tab.t-ret.active .tab-bdg{background:var(--purple-soft);color:var(--purple);}
 .tab.t-stamps.active .tab-bdg{background:var(--cyan-soft);color:var(--cyan);}
 .tab.t-traffic.active .tab-bdg{background:var(--purple-soft);color:var(--purple);}
+
 /* ── STAMP SEARCH ── */
 .st-search-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
 .st-search{
@@ -244,6 +255,7 @@ body{
 .st-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:13px;pointer-events:none;}
 .st-search-rel{position:relative;display:flex;align-items:center;}
 .st-cnt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);}
+
 /* ── DRILL-DOWN MODAL ── */
 #drill-modal{
   display:none;position:fixed;inset:0;z-index:500;
@@ -297,6 +309,7 @@ body{
   color:inherit;transition:color .12s;
 }
 .drill-link:hover{color:var(--accent);}
+
 /* ── ALERTS ── */
 #alerts-bar{display:none;padding:10px 28px;background:var(--surface);border-bottom:1px solid var(--border);}
 .al-inner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -310,10 +323,12 @@ body{
 .al-pill.danger{background:var(--red-soft);color:var(--red);border-color:var(--red-ring);}
 .al-pill.ok{background:var(--green-soft);color:var(--green);border-color:var(--green-ring);}
 .al-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
 /* ── PAGE LAYOUT ── */
 .page{display:none;padding:32px 28px 48px;max-width:1680px;margin:0 auto;}
 .page.active{display:block;animation:fadeIn .25s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
 .sec{
   font-size:11px;font-weight:600;color:var(--text-3);
   letter-spacing:.6px;text-transform:uppercase;
@@ -334,11 +349,13 @@ body{
   cursor:pointer;transition:all .15s;
 }
 .sec-act:hover{border-color:var(--border-strong);color:var(--text);background:var(--surface-alt);}
+
 /* ── GRIDS ── */
 .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
 .g5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
+
 /* ── KPI CARDS ── */
 .card{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
@@ -370,6 +387,7 @@ body{
   font-size:11px;color:var(--text-3);margin-top:10px;
   letter-spacing:.1px;display:flex;align-items:center;gap:5px;
 }
+
 /* ── INSIGHTS ── */
 .insights{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
 .ins{
@@ -394,6 +412,7 @@ body{
 .ins.danger .ins-ico{background:var(--red-soft);color:var(--red);}
 .ins-ttl{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.15px;}
 .ins-bod{font-family:'Inter','Syne',sans-serif;font-size:12.5px;color:var(--text-3);line-height:1.55;}
+
 /* ── FUNNEL ── */
 .funnel-row{display:flex;align-items:center;gap:18px;margin-bottom:14px;}
 .funnel-row:last-child{margin-bottom:0;}
@@ -403,6 +422,7 @@ body{
 .funnel-track{flex:1;height:48px;background:var(--surface-alt);border-radius:10px;overflow:hidden;border:1px solid var(--border-subtle);}
 .funnel-fill{height:100%;border-radius:9px;display:flex;align-items:center;justify-content:flex-end;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;letter-spacing:.3px;color:#fff;transition:width 1s cubic-bezier(.16,1,.3,1);box-shadow:inset 0 1px 0 rgba(255,255,255,.15);}
 [data-theme="dark"] .funnel-fill{color:#070810;}
+
 /* ── QUALITY BARS ── */
 .qual-row{margin-bottom:18px;}
 .qual-row:last-child{margin-bottom:0;}
@@ -411,6 +431,7 @@ body{
 .qual-vl{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--green);font-feature-settings:'tnum';}
 .qual-trk{height:6px;background:var(--surface-alt);border-radius:100px;overflow:hidden;border:1px solid var(--border-subtle);}
 .qual-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--green) 0%,#3dd49f 100%);transition:width 1.2s cubic-bezier(.16,1,.3,1);}
+
 /* ── CHART CARDS ── */
 .cc{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
@@ -437,6 +458,7 @@ body{
 .gran-btn:hover{color:var(--text);}
 .gran-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:var(--shadow-sm);font-weight:600;}
 [data-theme="dark"] .gran-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:none;}
+
 /* ── TABLES ── */
 .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border-subtle);}
 .tbl-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
@@ -481,6 +503,7 @@ body{
 .p-m{background:var(--surface-alt);color:var(--text-3);border-color:var(--border);}
 .conv-bar{height:8px;background:var(--surface-alt);border-radius:100px;overflow:hidden;min-width:100px;border:1px solid var(--border-subtle);}
 .conv-fill{height:100%;background:linear-gradient(90deg,var(--green) 0%,#3dd49f 100%);border-radius:100px;}
+
 /* ── LOST BUCKETS ── */
 .bkt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 .bkt{
@@ -493,6 +516,7 @@ body{
 .bkt-val{font-family:'Inter','Syne',sans-serif;font-size:36px;font-weight:600;line-height:1;letter-spacing:-1.2px;font-feature-settings:'tnum';}
 .bkt-lbl{font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);margin-top:10px;letter-spacing:-.1px;}
 .bkt-hint{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-top:4px;letter-spacing:.1px;}
+
 /* ── SHOPIFY BANNER ── */
 .spy-bnr{
   display:flex;align-items:center;gap:14px;padding:14px 20px;
@@ -503,12 +527,14 @@ body{
 .spy-nm{font-size:14px;font-weight:600;color:var(--cyan);letter-spacing:-.1px;}
 .spy-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-top:2px;}
 .spy-cc{border-color:var(--cyan-ring) !important;}
+
 /* ── TOAST ── */
 #toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
 .tst{font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:500;padding:10px 16px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);animation:su .2s ease;pointer-events:auto;box-shadow:var(--shadow-lg);letter-spacing:-.05px;}
 .tst.success{border-color:var(--green-ring);color:var(--green);}
 .tst.error{border-color:var(--red-ring);color:var(--red);}
 @keyframes su{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
 /* ── MODAL ── */
 #smod{display:none;position:fixed;inset:0;background:rgba(10,14,26,.5);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 [data-theme="dark"] #smod{background:rgba(0,0,0,.65);}
@@ -521,11 +547,13 @@ body{
 .srow:last-child{border-bottom:none;}
 .sdesc{font-family:'Inter','Syne',sans-serif;font-size:13px;color:var(--text-2);font-weight:500;letter-spacing:-.05px;}
 .skey{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-shadow:0 1px 0 var(--border);min-width:24px;text-align:center;}
+
 /* ── FOOTER ── */
 .footer{padding:20px 28px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;max-width:1680px;margin:0 auto;}
 .flinks{display:flex;gap:18px;}
 .flink{color:var(--text-2);cursor:pointer;transition:color .15s;font-weight:500;}
 .flink:hover{color:var(--accent);}
+
 /* ── RESPONSIVE ── */
 @media(max-width:1100px){
   .g4,.g5{grid-template-columns:repeat(2,1fr);}
@@ -549,11 +577,14 @@ body{
 </style>
 </head>
 <body>
+
 <div id="loading">
   <div class="sk-ring"></div>
   <div class="sk-text" id="loading-msg">Cargando datos de atribución</div>
 </div>
+
 <div id="app" style="display:none;">
+
 <div class="header" id="hdr">
   <div class="logo">
     <div class="logo-mark">
@@ -602,6 +633,7 @@ body{
     <button class="hdr-btn icon-only" onclick="toggleSh()" title="Shortcuts">⌨</button>
   </div>
 </div>
+
 <div class="tabs">
   <div class="tab active"   onclick="switchTab('funnel',this)">Full Funnel <span class="tab-bdg" id="tb0">—</span></div>
   <div class="tab t-paid"   onclick="switchTab('paid',this)">Paid Merchants <span class="tab-bdg" id="tb1">—</span></div>
@@ -612,6 +644,7 @@ body{
   <div class="tab t-traffic" onclick="switchTab('traffic',this)">Traffic Sources <span class="tab-bdg" id="tb6">—</span></div>
 </div>
 <div id="alerts-bar"><div class="al-inner" id="al-inner"></div></div>
+
 <!-- FULL FUNNEL -->
 <div class="page active" id="page-funnel">
   <div class="sec"><span class="sec-title">Insights</span></div>
@@ -664,6 +697,7 @@ body{
     </div>
   </div>
 </div>
+
 <!-- PAID MERCHANTS -->
 <div class="page" id="page-paid">
   <div class="sec"><span class="sec-title">Insights</span></div>
@@ -686,6 +720,7 @@ body{
     <div class="cc"><div class="cc-ttl">Churn Rate by Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-churn"></canvas></div></div>
     <div class="cc"><div class="cc-ttl">Avg Days Active by Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-avgd"></canvas></div></div>
   </div>
+
   <div class="sec"><span class="sec-title">By Stamp</span>
     <div class="sec-acts"><button class="sec-act" onclick="expTbl('p-stamp-tbody','paid-by-stamp')">↓ CSV</button></div>
   </div>
@@ -716,6 +751,7 @@ body{
     </table></div>
   </div>
 </div>
+
 <!-- LOST -->
 <div class="page" id="page-lost">
   <div class="sec"><span class="sec-title">Insights</span></div>
@@ -735,6 +771,7 @@ body{
     <div class="cc"><div class="cc-ttl">Uninstall Reasons</div><div style="position:relative;height:300px;"><canvas id="c-l-rsn"></canvas></div></div>
   </div>
 </div>
+
 <!-- ADS -->
 <div class="page" id="page-ads">
   <div class="sec"><span class="sec-title">Insights</span></div>
@@ -782,51 +819,12 @@ body{
     <tbody id="a-kw"></tbody>
   </table></div></div>
   <div class="spy-bnr"><div class="spy-ico">🛍</div><div><div class="spy-nm">Shopify App Store</div><div class="spy-sub">Surface &amp; organic — separate from Google Ads</div></div></div>
-  <div class="g2" style="margin-bottom:24px;">
+  <div class="g2">
     <div class="cc spy-cc"><div class="cc-ttl">Visits by Surface <span class="bdg" style="background:var(--cyan-soft);color:var(--cyan);">App Store</span></div><div style="position:relative;height:280px;"><canvas id="c-srf"></canvas></div></div>
     <div class="cc spy-cc"><div class="cc-ttl">Organic Keywords <span class="bdg" style="background:var(--cyan-soft);color:var(--cyan);">App Store</span></div><div style="position:relative;height:280px;"><canvas id="c-skw"></canvas></div></div>
   </div>
-
-  <div class="sec"><span class="sec-title">Shopify App Store Attribution</span></div>
-  <div class="g3" style="margin-bottom:24px;">
-    <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">Organic Installs</div><div class="card-val" id="spy-organic">—</div><div class="card-sub">apps.shopify.com / organic</div></div>
-    <div class="card" style="--card-accent:var(--yellow);--card-color:var(--yellow)"><div class="card-lbl">CPC Installs</div><div class="card-val" id="spy-cpc">—</div><div class="card-sub">Shopify App Store ads</div></div>
-    <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Admin Search</div><div class="card-val" id="spy-admin">—</div><div class="card-sub">Shopify admin search</div></div>
-  </div>
-  <div class="g2">
-    <div class="cc spy-cc">
-      <div class="cc-ttl">App Store Traffic Sources <span class="bdg" style="background:var(--cyan-soft);color:var(--cyan);">Filtered</span><button class="tbl-act" onclick="expTbl('spy-src-body','shopify-app-store-sources')">↓ CSV</button></div>
-      <div class="tbl-wrap"><table class="tbl" id="spy-src-tbl">
-        <thead><tr>
-          <th onclick="srt('spy-src-tbl',0)">Channel</th>
-          <th class="num" onclick="srt('spy-src-tbl',1)">Installs</th>
-          <th class="num" onclick="srt('spy-src-tbl',2)">%</th>
-          <th class="num" onclick="srt('spy-src-tbl',3)">Trial</th>
-          <th class="num" onclick="srt('spy-src-tbl',4)">Trial%</th>
-        </tr></thead>
-        <tbody id="spy-src-body"></tbody>
-      </table></div>
-    </div>
-    <div class="cc spy-cc">
-      <div class="cc-ttl">Shopify Keywords <span class="bdg" style="background:var(--cyan-soft);color:var(--cyan);">Organic + CPC</span><button class="tbl-act" onclick="expTbl('spy-kw-body','shopify-app-store-keywords')">↓ CSV</button></div>
-      <div class="tbl-wrap"><table class="tbl" id="spy-kw-tbl">
-        <thead><tr>
-          <th onclick="srt('spy-kw-tbl',0)">Keyword</th>
-          <th onclick="srt('spy-kw-tbl',1)">Type</th>
-          <th class="num" onclick="srt('spy-kw-tbl',2)">Installs</th>
-          <th class="num" onclick="srt('spy-kw-tbl',3)">Trial</th>
-          <th class="num" onclick="srt('spy-kw-tbl',4)">Trial%</th>
-          <th class="num" onclick="srt('spy-kw-tbl',5)">Paid</th>
-          <th class="num" onclick="srt('spy-kw-tbl',6)">Paid%</th>
-        </tr></thead>
-        <tbody id="spy-kw-body"></tbody>
-      </table></div>
-    </div>
-  </div>
-  <div id="spy-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text-3);font-size:14px;">
-    No hay datos de Shopify App Store para el rango seleccionado.
-  </div>
 </div>
+
 <!-- RETENTION -->
 <div class="page" id="page-retention">
   <div class="sec"><span class="sec-title">Drop &amp; Churn Analysis</span></div>
@@ -839,6 +837,7 @@ body{
     <div class="cc"><div class="cc-ttl">Conv Rate by Channel</div><div style="position:relative;height:300px;"><canvas id="c-r-ch"></canvas></div></div>
   </div>
 </div>
+
 <!-- STAMPS -->
 <div class="page" id="page-stamps">
   <div class="sec"><span class="sec-title">Stamps Overview</span></div>
@@ -876,13 +875,14 @@ body{
       <th class="num" onclick="srt('st-tbl-el',1)">Installs</th>
       <th class="num" onclick="srt('st-tbl-el',2)">%</th>
       <th class="num" onclick="srt('st-tbl-el',3)">Paid</th>
-      <th class="num" onclick="srt('st-tbl-el',4)">Conv%</th>
-      <th class="num" onclick="srt('st-tbl-el',5)">Churn%</th>
-      <th class="num" onclick="srt('st-tbl-el',6)">Avg Days</th>
-      <th class="num" onclick="srt('st-tbl-el',7)">Shopify</th>
-      <th class="num" onclick="srt('st-tbl-el',8)">Etsy</th>
-      <th class="num" onclick="srt('st-tbl-el',9)">Woo</th>
-      <th class="num" onclick="srt('st-tbl-el',10)">Other</th>
+      <th class="num" onclick="srt('st-tbl-el',4)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('st-tbl-el',5)">Conv%</th>
+      <th class="num" onclick="srt('st-tbl-el',6)">Churn%</th>
+      <th class="num" onclick="srt('st-tbl-el',7)">Avg Days</th>
+      <th class="num" onclick="srt('st-tbl-el',8)">Shopify</th>
+      <th class="num" onclick="srt('st-tbl-el',9)">Etsy</th>
+      <th class="num" onclick="srt('st-tbl-el',10)">Woo</th>
+      <th class="num" onclick="srt('st-tbl-el',11)">Other</th>
     </tr></thead>
     <tbody id="st-tbl"></tbody>
   </table></div></div>
@@ -890,6 +890,7 @@ body{
     No hay datos de Stamps en el rango seleccionado. Cargá el export semanal en el tab <strong>Stamps</strong> del sheet.
   </div>
 </div>
+
 <!-- TRAFFIC SOURCES -->
 <div class="page" id="page-traffic">
   <div class="sec"><span class="sec-title">Traffic Sources — Installs by Channel</span>
@@ -915,6 +916,7 @@ body{
   <div id="ts-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
     No hay datos de BigQuery para el rango seleccionado. Verificá que la API de BigQuery esté habilitada en Apps Script.
   </div>
+
   <div class="sec" style="margin-top:8px;">Shopify Keywords
     <div class="sec-acts">
       <div class="gran-tog" style="margin-right:8px;">
@@ -941,6 +943,7 @@ body{
     No hay datos de keywords de Shopify en el rango seleccionado.
   </div>
 </div>
+
 <!-- TRAFFIC KEYWORD DRILL MODAL -->
 <div id="kw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow-y:auto;" onclick="if(event.target===this)closeKwDrill()">
   <div style="background:var(--surface);border-radius:14px;max-width:680px;margin:60px auto;padding:28px;box-shadow:var(--shadow-lg);">
@@ -960,6 +963,7 @@ body{
     </table></div>
   </div>
 </div>
+
 <!-- DRILL-DOWN MODAL -->
 <div id="drill-modal" onclick="if(event.target===this)closeDrill()">
   <div class="drill-box">
@@ -990,7 +994,9 @@ body{
     </div>
   </div>
 </div>
+
 </div><!-- #app -->
+
 <div class="footer" id="footer" style="display:none;">
   <div>Customily Attribution v9</div>
   <div class="flinks">
@@ -1013,10 +1019,12 @@ body{
     <div class="srow"><span class="sdesc">Cerrar</span><span class="skey">Esc</span></div>
   </div>
 </div>
+
 <script>
 // ▼ PEGAR ACÁ la URL del deployment (termina en /exec)
 var _EXEC_URL = 'https://script.google.com/macros/s/AKfycbyOYJjE4cmJszNqenpSKoCoRVzvg3vVNwA4RoKdHSPSMKdXR9QAoBrYW1c3Sp5DWcW6bg/exec';
 let _ch={},_data=null,_rat=null,_ri=null,_funnelDetails=[],_paidDetails=[],_stampsTable=[];
+
 // ── THEME — default always light, persist choice ─────────
 const TK='cust-theme';
 function sysDark(){return matchMedia('(prefers-color-scheme:dark)').matches;}
@@ -1052,6 +1060,7 @@ function updChartColors(res){
     if(document.documentElement.getAttribute('data-sel-t')==='auto') applyTheme('auto');
   });
 })();
+
 Chart.defaults.font.family="'JetBrains Mono',monospace";
 Chart.defaults.font.size=10;
 const PAL=['#3d6fff','#00d68f','#f59e0b','#ff4363','#9b5de5','#00b4d8','#f97316','#ec4899','#6366f1','#14b8a6'];
@@ -1059,6 +1068,7 @@ function gc(){
   const dk=document.documentElement.getAttribute('data-theme')==='dark';
   return{muted:dk?'#4a5070':'#8890b0',grid:dk?'#1c1f35':'#e2e4ef'};
 }
+
 // ── DYNAMIC MAX ──────────────────────────────────────────
 function dynMax(arr, gap){
   if(!arr||!arr.length) return 10;
@@ -1066,6 +1076,7 @@ function dynMax(arr, gap){
   const g=gap!==undefined?gap:5;
   return Math.ceil((mx+g)/5)*5||10;
 }
+
 // ── MONTH PICKER ─────────────────────────────────────────
 const MNS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const _mp={
@@ -1130,6 +1141,7 @@ document.addEventListener('click',e=>{
     }
   });
 });
+
 // ── UTILS ────────────────────────────────────────────────
 function toast(msg,type='info',dur=2400){
   const el=document.createElement('div');
@@ -1150,6 +1162,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape') document.getElementById('smod').classList.remove('show');
 });
 window.addEventListener('scroll',()=>{document.getElementById('hdr').classList.toggle('scrolled',scrollY>4);},{passive:true});
+
 // ── PRESETS & RELOAD ─────────────────────────────────────
 function setPreset(p,btn){
   document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
@@ -1198,12 +1211,13 @@ function manualRefresh(){
   const a=document.querySelector('.preset-btn.active');if(a)a.click();
 }
 function destroyAll(){Object.values(_ch).forEach(c=>{try{c.destroy();}catch(e){}});_ch={};}
-function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','spy-src-body','spy-kw-body','st-tbl','p-stamp-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
+function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
 function freshCanvas(id){
   const o=document.getElementById(id);if(!o) return null;
   const n=document.createElement('canvas');n.id=id;
   o.parentNode.replaceChild(n,o);return n;
 }
+
 // ── GRANULARITY ──────────────────────────────────────────
 function aggMo(bw){
   const m={};
@@ -1230,6 +1244,7 @@ function switchTab(name,el){
   if(el) el.classList.add('active');
   scrollTo({top:0,behavior:'smooth'});
 }
+
 // ── TABLE SORT & EXPORT ──────────────────────────────────
 const _sst={};
 function srt(tid,col){
@@ -1257,7 +1272,8 @@ function expTbl(tbid,name){
   a.download=`customily-${name}-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();toast('Exportado: '+name+'.csv','success');
 }
-function expAll(){[['ch-tbody','channels'],['co-tbody','countries'],['kw-tbody','keywords'],['a-camp','campaigns'],['a-kw','kw-ads'],['spy-src-body','shopify-app-store-sources'],['spy-kw-body','shopify-app-store-keywords']].forEach(([i,n])=>expTbl(i,n));}
+function expAll(){[['ch-tbody','channels'],['co-tbody','countries'],['kw-tbody','keywords'],['a-camp','campaigns'],['a-kw','kw-ads']].forEach(([i,n])=>expTbl(i,n));}
+
 // ── ALERTS & INSIGHTS ────────────────────────────────────
 function buildAlerts(d){
   const dr=parseFloat(d.funnel.churnRate||0),cv2=parseFloat(d.funnel.conversionRate||0),cpa=parseFloat(d.ads.overallCPA||0);
@@ -1271,7 +1287,9 @@ function buildAlerts(d){
   document.getElementById('al-inner').innerHTML='<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-3);margin-right:6px;">ALERTAS:</span>'+als.map(a=>`<span class="al-pill ${a.t}"><span class="al-dot"></span>${a.m}</span>`).join('');
   document.getElementById('alerts-bar').style.display='block';
 }
+
 function insCard(t,i,n,b){return`<div class="ins ${t}"><div class="ins-ico">${i}</div><div class="ins-ttl">${n}</div><div class="ins-bod">${b}</div></div>`;}
+
 function buildInsights(d){
   const cv2=parseFloat(d.funnel.conversionRate||0),dr=parseFloat(d.funnel.churnRate||0),q=parseFloat(d.funnel.quality?.moreThan1h||0);
   document.getElementById('ins-panel').innerHTML=[
@@ -1280,6 +1298,7 @@ function buildInsights(d){
     insCard(q>70?'ok':q>50?'warn':'danger','⏱',`Survival 1h: ${q}%`,q>70?'Mayoría pasa la primera hora.':q>50?'Salidas rápidas. Revisar first-run.':'Alta tasa de rebote. Revisar landing.')
   ].join('');
 }
+
 function buildInsightsPaid(p){
   const cr=parseFloat(p.churnRate||0),rev=Number(p.totalRevenue||0),days=parseFloat(p.avgDays||0);
   const topCh=(p.byChannel||[]).filter(r=>r.value>0)[0];
@@ -1290,6 +1309,7 @@ function buildInsightsPaid(p){
     topCh?insCard('ok','🏆',`Top canal: ${topCh.label}`,`${topCh.value.toLocaleString()} paid merchants originados desde ${topCh.label}.`):insCard('warn','📭','Sin datos de canal','No hay suficiente data de canal en este período.')
   ].join('');
 }
+
 function buildInsightsLost(l){
   const tot=l.total||1;
   const bouncePct=((l.immediate/tot)*100).toFixed(1);
@@ -1301,6 +1321,7 @@ function buildInsightsLost(l){
     topChCh?insCard('warn','📉',`Mayor churn: ${topChCh.label}`,`Canal "${topChCh.label}" tiene ${topChCh.value}% de churn rate. Revisar calidad del tráfico o mensajes de ese canal.`):insCard('ok','✓','Churn por canal equilibrado','No hay un canal con churn significativamente más alto.')
   ].join('');
 }
+
 function buildInsightsAds(a){
   const cpi=parseFloat(a.overallCPI||0),cpa=parseFloat(a.overallCPA||0),ctr=parseFloat(a.overallCTR||0);
   const topCamp=(a.campaignTable||[]).filter(r=>r.installs>5).sort((x,y)=>parseFloat(y.convRate)-parseFloat(x.convRate))[0];
@@ -1311,11 +1332,13 @@ function buildInsightsAds(a){
     topKw?insCard('ok','🔑',`Top keyword: "${topKw.keyword}"`,`$${Number(topKw.spend).toLocaleString()} invertidos, ${topKw.installs} installs, ${topKw.paid} paid merchants. ${topKw.cpa==='N/A'?'Sin conversiones atribuidas.':'CPA: $'+topKw.cpa+'.'}`):insCard('warn','🔍','Sin keywords con datos','No hay keywords con spend en este período.')
   ].join('');
 }
+
 function startTimer(){
   clearInterval(_ri);_rat=Date.now();
   const u=()=>{const s=Math.floor((Date.now()-_rat)/1000);const e=document.getElementById('last-upd');if(e)e.innerHTML='<span class="live-dot"></span>'+(s<60?`Actualizado ${s}s`:s<3600?`Hace ${Math.floor(s/60)}m`:`Hace ${Math.floor(s/3600)}h`);};
   u();_ri=setInterval(u,20000);
 }
+
 // ── CHART FACTORIES ──────────────────────────────────────
 function _destroyChart(id){if(_ch[id]){try{_ch[id].destroy();}catch(e){}delete _ch[id];}}
 function mkLine(id,labels,vals,color){
@@ -1352,10 +1375,12 @@ function mkDo(id,labels,vals){
   const c=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:f.map(d=>d.l),datasets:[{data:f.map(d=>d.v),backgroundColor:PAL,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:muted,boxWidth:8,padding:10}}}}});
   _ch[id]=c;return c;
 }
+
 // ── PILL HELPERS ─────────────────────────────────────────
 function npill(v){if(v==='N/A')return'<span class="pill p-m">N/A</span>';const n=parseFloat(v);if(isNaN(n))return v;return`<span class="pill ${n<5?'p-g':n<20?'p-y':'p-r'}">$${v}</span>`;}
 function cpill(v){const n=parseFloat(v);return`<span class="pill ${n>=30?'p-g':n>=10?'p-y':'p-r'}">${v}%</span>`;}
 function chpill(v){const n=parseFloat(v);return`<span class="pill ${n<30?'p-g':n<60?'p-y':'p-r'}">${v}%</span>`;}
+
 // ── RENDER ───────────────────────────────────────────────
 function render(data){
   _data=data;
@@ -1363,6 +1388,7 @@ function render(data){
   window._kwDrillRows = [];
   try {
   const{funnel,paid,lost,ads,surface,stamps}=data;
+
   // Tab badges
   document.getElementById('tb0').textContent=funnel.totalInstalls.toLocaleString();
   document.getElementById('tb1').textContent=paid.total.toLocaleString();
@@ -1370,11 +1396,13 @@ function render(data){
   document.getElementById('tb3').textContent='$'+Number(ads.totalSpend).toLocaleString();
   document.getElementById('tb4').textContent=(parseFloat(funnel.churnRate)||0)+'%';
   if(stamps) document.getElementById('tb5').textContent=(stamps.total||0).toLocaleString();
+
   buildAlerts(data);
   buildInsights(data);
   buildInsightsPaid(paid);
   buildInsightsLost(lost);
   buildInsightsAds(ads);
+
   // Funnel viz
   const maxV=funnel.totalInstalls||1; // guard against division by zero
   document.getElementById('funnel-viz').innerHTML=[
@@ -1382,6 +1410,7 @@ function render(data){
     {l:'Activated (Trial)',     v:funnel.totalActivated, c:'#0891b2'},
     {l:'Paid Merchants',        v:funnel.totalPaid,      c:'#00a86b'}
   ].map(s=>{const p=Math.min((s.v/maxV*100),100).toFixed(1);return`<div class="funnel-row"><div class="funnel-meta"><div class="funnel-lbl">${s.l}</div><div class="funnel-pct" style="color:${s.c}">${s.v===funnel.totalInstalls?'100':p}%</div></div><div class="funnel-track"><div class="funnel-fill" style="width:${p}%;background:${s.c};">${s.v.toLocaleString()}</div></div></div>`;}).join('');
+
   // KPI cards
   document.getElementById('f-total').textContent=funnel.totalInstalls.toLocaleString();
   document.getElementById('f-unique').textContent=`${funnel.uniqueShops.toLocaleString()} unique shops`;
@@ -1390,10 +1419,13 @@ function render(data){
   document.getElementById('f-active').textContent=funnel.totalActive.toLocaleString();
   document.getElementById('f-churned').textContent=funnel.totalChurned.toLocaleString();
   document.getElementById('f-churnrate').textContent=`${funnel.churnRate}% drop rate`;
+
   // Quality bars
   document.getElementById('quality-bars').innerHTML=[{l:'Survive > 1h',k:'moreThan1h'},{l:'Survive > 7d',k:'moreThan7d'},{l:'Survive > 30d',k:'moreThan30d'}].map(q=>`<div class="qual-row"><div class="qual-hd"><span class="qual-nm">${q.l}</span><span class="qual-vl">${funnel.quality[q.k]}%</span></div><div class="qual-trk"><div class="qual-fill" style="width:${funnel.quality[q.k]}%"></div></div></div>`).join('');
+
   // Installs time
   _ch['c-wk-all']=mkLine('c-wk-all',funnel.byWeek.map(r=>r.label),funnel.byWeek.map(r=>r.value),'#3d6fff');
+
   // Channel table
   const cht=document.getElementById('ch-tbody');
   funnel.byChannel.forEach(r=>{
@@ -1405,14 +1437,17 @@ function render(data){
     cht.appendChild(tr);
   });
   document.getElementById('ch-cnt').textContent=funnel.byChannel.length+' canales';
+
   // Country & keyword tables
   const cot=document.getElementById('co-tbody');
   funnel.byCountry.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;cot.appendChild(tr);});
   const kwt=document.getElementById('kw-tbody');
   funnel.byKeyword.forEach(r=>{if(!r.label||r.label==='(not set)')return;const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;kwt.appendChild(tr);});
+
   // Store details for drill-down
   _funnelDetails = funnel.details || [];
   _paidDetails   = paid.details   || [];
+
   // PAID TAB
   document.getElementById('p-total').textContent=paid.total.toLocaleString();
   document.getElementById('p-active').textContent=paid.active.toLocaleString();
@@ -1420,6 +1455,7 @@ function render(data){
   document.getElementById('p-cr').textContent=`${paid.churnRate}% churn`;
   document.getElementById('p-avgd').textContent=paid.avgDays;
   document.getElementById('p-rev').textContent=`$${Number(paid.totalRevenue).toLocaleString()}`;
+
   _ch['c-wk-paid']=mkLine('c-wk-paid',paid.byWeek.map(r=>r.label),paid.byWeek.map(r=>r.value),'#00a86b');
   mkHBar('c-p-ch',paid.byChannel.map(r=>r.label),paid.byChannel.map(r=>r.value),'#00a86b');
   mkHBar('c-p-co',paid.byCountry.map(r=>r.label),paid.byCountry.map(r=>r.value),'#0891b2');
@@ -1428,6 +1464,7 @@ function render(data){
   const churnMax=dynMax(churnVals,5);
   mkHBar('c-p-churn',paid.churnByChannel.map(r=>r.label),churnVals,'#e03050',{min:0,max:churnMax});
   mkHBar('c-p-avgd',paid.avgDaysByChannel.map(r=>r.label),paid.avgDaysByChannel.map(r=>parseFloat(r.value)),'#d97706');
+
   // BY STAMP — paid tab
   if (paid.byStamp && paid.byStamp.length) {
     const topSt = paid.byStamp.slice(0, 15);
@@ -1457,6 +1494,7 @@ function render(data){
       });
     }
   }
+
   // LOST TAB
   document.getElementById('l-imm').textContent=lost.immediate.toLocaleString();
   document.getElementById('l-sh').textContent=lost.shortTerm.toLocaleString();
@@ -1469,6 +1507,7 @@ function render(data){
   const rsnVals=lost.reasons.map(r=>r.value);
   const rsnMax=dynMax(rsnVals,2);
   mkHBar('c-l-rsn',lost.reasons.map(r=>r.label),rsnVals,'#e03050',{min:0,max:rsnMax});
+
   // ADS TAB
   document.getElementById('a-spend').textContent=`$${Number(ads.totalSpend).toLocaleString()}`;
   document.getElementById('a-clicks').textContent=ads.totalClicks.toLocaleString();
@@ -1497,63 +1536,10 @@ function render(data){
     tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;
     ktb.appendChild(tr);
   });
+
   // SURFACE
   if(surface.surfaceType.length) mkDo('c-srf',surface.surfaceType.map(r=>r.label),surface.surfaceType.map(r=>r.value));
   if(surface.surfaceKw.length) mkHBar('c-skw',surface.surfaceKw.map(r=>r.label),surface.surfaceKw.map(r=>r.value),'#0891b2');
-
-  // SHOPIFY APP STORE ATTRIBUTION — filtered from GA4 trafficSources
-  // trafficSources can include Google Ads because it comes from GA4 acquisition data.
-  // This section intentionally keeps only Shopify App Store related rows.
-  const _isShopifyAppStoreSource = r => {
-    const c = String(r.canal || '').toLowerCase();
-    const isAppStore = c.includes('apps.shopify.com') || c.includes('admin-search') || c.includes('admin search');
-    const isGoogleAds = c.includes('google') || c.includes('google ads') || c.includes('paid search');
-    return isAppStore && !isGoogleAds;
-  };
-  const spySources = (data.trafficSources || []).filter(_isShopifyAppStoreSource);
-  const spyKeywords = (data.shopifyKeywords || []);
-  const sumBy = (rows, fn) => rows.reduce((s,r)=>s+(fn(r)||0),0);
-  const organicInstalls = sumBy(spySources.filter(r=>String(r.canal||'').toLowerCase().includes('organic')), r=>Number(r.installs||0));
-  const cpcInstalls = sumBy(spySources.filter(r=>String(r.canal||'').toLowerCase().includes('cpc')), r=>Number(r.installs||0));
-  const adminInstalls = sumBy(spySources.filter(r=>String(r.canal||'').toLowerCase().includes('admin')), r=>Number(r.installs||0));
-  const elOrganic = document.getElementById('spy-organic');
-  const elCpc = document.getElementById('spy-cpc');
-  const elAdmin = document.getElementById('spy-admin');
-  if(elOrganic) elOrganic.textContent = organicInstalls.toLocaleString();
-  if(elCpc) elCpc.textContent = cpcInstalls.toLocaleString();
-  if(elAdmin) elAdmin.textContent = adminInstalls.toLocaleString();
-  const spySrcBody = document.getElementById('spy-src-body');
-  if(spySrcBody) {
-    spySrcBody.innerHTML = '';
-    spySources.forEach(r => {
-      const installs = Number(r.installs||0);
-      const trials = Number(r.trials||0);
-      const trialPct = installs > 0 ? ((trials/installs)*100).toFixed(1) : '0.0';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${installs.toLocaleString()}</td><td class="num">${r.pct||0}%</td><td class="num" style="color:var(--green)">${trials.toLocaleString()}</td><td class="num">${cpill(trialPct)}</td>`;
-      spySrcBody.appendChild(tr);
-    });
-  }
-  const spyKwBody = document.getElementById('spy-kw-body');
-  if(spyKwBody) {
-    spyKwBody.innerHTML = '';
-    spyKeywords.forEach(r => {
-      const installs = Number(r.installs||0);
-      const trials = Number(r.trials||0);
-      const paidCount = Number(r.paid||0);
-      const trialPct = installs > 0 ? ((trials/installs)*100).toFixed(1) : '0.0';
-      const paidPct = installs > 0 ? ((paidCount/installs)*100).toFixed(1) : '0.0';
-      const type = String(r.type||'organic').toLowerCase();
-      const typePill = type === 'cpc'
-        ? `<span class="pill p-y">CPC</span>`
-        : `<span class="pill p-g">Organic</span>`;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong>${r.keyword||'(not provided)'}</strong></td><td>${typePill}</td><td class="num">${installs.toLocaleString()}</td><td class="num" style="color:var(--green)">${trials.toLocaleString()}</td><td class="num">${cpill(trialPct)}</td><td class="num" style="color:var(--purple)">${paidCount.toLocaleString()}</td><td class="num">${cpill(paidPct)}</td>`;
-      spyKwBody.appendChild(tr);
-    });
-  }
-  const spyEmpty = document.getElementById('spy-empty');
-  if(spyEmpty) spyEmpty.style.display = (spySources.length || spyKeywords.length) ? 'none' : 'block';
 
   // STAMPS
   if(stamps) {
@@ -1576,94 +1562,41 @@ function render(data){
     const emp = document.getElementById('st-empty');
     if(emp) emp.style.display='block';
   }
+
   // TRAFFIC SOURCES (BigQuery)
-  const tsRaw = data.trafficSources || [];
-  const kwRaw = data.shopifyKeywords || [];
-
-  // En la tabla principal de Traffic Sources, Shopify App Store debe mostrarse separado
-  // como Shopify Organic y Shopify Ads. Si el backend trae "Shopify (Unknown)",
-  // usamos shopifyKeywords para abrir ese bucket por type: organic/cpc.
-  const _mergeTrafficRows = rows => {
-    const map = new Map();
-    rows.forEach(r => {
-      const canal = String(r.canal || 'Other').trim() || 'Other';
-      const key = canal.toLowerCase();
-      if(!map.has(key)) map.set(key, {canal, installs:0, trials:0, shops:[]});
-      const cur = map.get(key);
-      cur.installs += Number(r.installs || 0);
-      cur.trials += Number(r.trials || 0);
-      if(Array.isArray(r.shops)) cur.shops.push(...r.shops);
-    });
-    return [...map.values()];
-  };
-  const _isGenericShopifyBucket = r => {
-    const c = String(r.canal || '').toLowerCase();
-    if(c.includes('admin')) return false;
-    return c.includes('shopify') || c.includes('apps.shopify.com');
-  };
-  const _kwToTrafficRow = (type, label) => {
-    const rows = kwRaw.filter(r => String(r.type || '').toLowerCase() === type);
-    return {
-      canal: label,
-      installs: rows.reduce((s,r)=>s+Number(r.installs||0),0),
-      trials: rows.reduce((s,r)=>s+Number(r.trials||0),0),
-      shops: rows.flatMap(r=>Array.isArray(r.shops)?r.shops:[])
-    };
-  };
-
-  let ts = tsRaw;
-  if(kwRaw.length) {
-    const baseRows = tsRaw.filter(r => !_isGenericShopifyBucket(r));
-    const splitRows = [_kwToTrafficRow('organic','Shopify Organic'), _kwToTrafficRow('cpc','Shopify Ads')]
-      .filter(r => r.installs > 0 || r.trials > 0);
-    ts = _mergeTrafficRows([...baseRows, ...splitRows]);
-  } else {
-    ts = _mergeTrafficRows(tsRaw.map(r => {
-      const c = String(r.canal || '').toLowerCase();
-      let canal = r.canal;
-      if(c.includes('shopify') || c.includes('apps.shopify.com')) {
-        if(c.includes('cpc') || c.includes('ads') || c.includes('paid')) canal = 'Shopify Ads';
-        else if(c.includes('admin')) canal = 'Shopify Admin';
-        else canal = 'Shopify Organic';
-      }
-      return {...r, canal};
-    }));
-  }
-
-  ts.sort((a,b)=>Number(b.installs||0)-Number(a.installs||0));
-  const tsTotalInstalls = ts.reduce((s,r)=>s+Number(r.installs||0),0);
-  document.getElementById('tb6').textContent = tsTotalInstalls ? tsTotalInstalls.toLocaleString() : '—';
+  const ts = data.trafficSources || [];
+  document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
   if(ts.length) {
     mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
     mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
     const tstb = document.getElementById('ts-tbl');
     tstb.innerHTML = '';
     ts.forEach(r => {
-      const installs = Number(r.installs || 0);
-      const trials = Number(r.trials || 0);
-      const pct = tsTotalInstalls > 0 ? ((installs/tsTotalInstalls)*100).toFixed(1) : '0.0';
-      const trialPct = installs > 0 ? ((trials/installs)*100).toFixed(1) : '0.0';
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
       const _tsIdx = _tsDrillRows.length;
       _tsDrillRows.push(r);
-      const trialCell = trials > 0
-        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${trials.toLocaleString()}</span>`
+      const trialCell = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${r.trials}</span>`
         : `<span style="color:var(--green)">0</span>`;
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${installs.toLocaleString()}</td><td class="num">${pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
+      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
       tstb.appendChild(tr);
     });
-    const totTrials = ts.reduce((s,r)=>s+Number(r.trials||0),0);
-    const totTrialPct = tsTotalInstalls > 0 ? ((totTrials/tsTotalInstalls)*100).toFixed(1) : '0.0';
+    const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
+    const totTrials   = ts.reduce((s,r)=>s+(r.trials||0),0);
+    const totTrialPct = totInstalls > 0 ? ((totTrials/totInstalls)*100).toFixed(1) : '0.0';
     const totRow = document.createElement('tr');
     totRow.style.fontWeight='700';
-    totRow.innerHTML = `<td>Total</td><td class="num">${tsTotalInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials.toLocaleString()}</td><td class="num">${totTrialPct}%</td>`;
+    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials}</td><td class="num">${totTrialPct}%</td>`;
     tstb.appendChild(totRow);
     document.getElementById('ts-empty').style.display='none';
   } else {
     document.getElementById('ts-empty').style.display='block';
   }
+
   // Build global trial domains set (sent from backend)
   window._tsTrialDomains = new Set((data.trialDomains||[]).map(s=>s.toLowerCase().trim()));
+
   // SHOPIFY KEYWORDS
   const skw = data.shopifyKeywords || [];
   var _skwAllRows = skw; // keep full list for filtering
@@ -1690,6 +1623,7 @@ function render(data){
   } else {
     document.getElementById('ts-kw-empty').style.display='block';
   }
+
   // RETENTION
   const sa=Object.entries(funnel.churnBuckets).sort((a,b)=>b[1]-a[1]);
   const sp=Object.entries(paid.churnBuckets).sort((a,b)=>b[1]-a[1]);
@@ -1701,6 +1635,7 @@ function render(data){
   const convVals=funnel.byChannel.map(r=>parseFloat(r.convRate));
   const convMax=dynMax(convVals,5);
   mkHBar('c-r-ch',funnel.byChannel.map(r=>r.label),convVals,'#7c3aed',{min:0,max:convMax});
+
   document.getElementById('fts').textContent='Generado: '+new Date().toLocaleString();
   startTimer();
   document.getElementById('loading').style.display='none';
@@ -1715,10 +1650,12 @@ function render(data){
     if(ring){ring.style.borderColor='var(--border)';ring.style.borderTopColor='#e03050';ring.style.animation='none';}
   }
 }
+
 function closeDrill(){
   document.getElementById('drill-modal').classList.remove('show');
   document.body.style.overflow='';
 }
+
 // ── SHOPIFY KEYWORD DRILL ─────────────────────────────────
 var _kwDrillData = null;
 var _kwDrillMode = 'all';
@@ -1787,6 +1724,7 @@ function expKwDrill() {
   a.download = `kw-${(_kwDrillData.keyword||'keyword').replace(/\s+/g,'-')}.csv`;
   a.click();
 }
+
 function expDrill(){
   const ctx=document.getElementById('drill-modal')._drillData;
   if(!ctx) return;
@@ -1803,15 +1741,19 @@ function expDrill(){
   a.click();
   toast('Exportado','success');
 }
+
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&document.getElementById('drill-modal').classList.contains('show')) closeDrill();
 });
+
 // ── FUNNEL / PAID DRILL-DOWN ─────────────────────────────
 function _openGenericDrill(title, subtitle, allRows, filterFn, colHeaders, rowRenderer) {
   const rows = filterFn ? allRows.filter(filterFn) : allRows;
+
   document.getElementById('drill-stamp-tag').textContent = title;
   document.getElementById('drill-metric-tag').textContent = subtitle;
   document.getElementById('drill-count-tag').textContent = rows.length.toLocaleString() + ' merchants';
+
   // Summary pills
   const paid    = rows.filter(r=>r.paid).length;
   const act     = rows.filter(r=>r.activated).length;
@@ -1826,8 +1768,10 @@ function _openGenericDrill(title, subtitle, allRows, filterFn, colHeaders, rowRe
   stats.push({l:'Churned',  v:churned.toLocaleString(),  c:'var(--red)'});
   stats.push({l:'Avg Days', v:avgDays+'d'});
   document.getElementById('drill-summary').innerHTML = stats.map(s=>`<div class="drill-stat"><div class="drill-stat-v" style="${s.c?'color:'+s.c:''}">${s.v}</div><div class="drill-stat-l">${s.l}</div></div>`).join('');
+
   // Rebuild thead
   document.getElementById('drill-thead').innerHTML='<tr>'+colHeaders.map((h,i)=>`<th onclick="srt('drill-tbl',${i})">${h}</th>`).join('')+'</tr>';
+
   // Populate rows
   const tbody = document.getElementById('drill-tbody');
   tbody.innerHTML = '';
@@ -1836,11 +1780,13 @@ function _openGenericDrill(title, subtitle, allRows, filterFn, colHeaders, rowRe
     tr.innerHTML = rowRenderer(r);
     tbody.appendChild(tr);
   });
+
   document.getElementById('drill-modal')._drillData = {stamp:title, metric:subtitle, rows,
     exportHeads: colHeaders};
   document.getElementById('drill-modal').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
+
 function openFunnelDrill(metric) {
   const labels = {all:'Total Installs', paid:'Paid Merchants', active:'Currently Active', churned:'Dropped'};
   const filters = {
@@ -1861,6 +1807,7 @@ function openFunnelDrill(metric) {
   };
   _openGenericDrill('Full Funnel', labels[metric]||metric, _funnelDetails, filters[metric], cols, renderer);
 }
+
 function openPaidDrill(metric) {
   const labels = {all:'All Paid Merchants', active:'Active', churned:'Churned'};
   const filters = {
@@ -1881,7 +1828,9 @@ function openPaidDrill(metric) {
   };
   _openGenericDrill('Paid Merchants', labels[metric]||metric, _paidDetails, filters[metric], cols, renderer);
 }
+
 // ── ADS / CHANNEL / LOST DRILL-DOWNS ────────────────────
+
 // Normalizes any Ad0X variant → base campaign name
 // Handles: "Ad06 Search..." → strip prefix | "Search... Ad06" → strip suffix
 function normCamp(name){
@@ -1890,6 +1839,7 @@ function normCamp(name){
     .replace(/\s+Ad\d+$/i,'')   // strip trailing " Ad06"
     .trim();
 }
+
 // Shared renderer for ads/channel drill-downs (includes keyword column)
 function _adsRowRenderer(r){
   const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
@@ -1903,7 +1853,9 @@ function _adsRowRenderer(r){
     `<td class="dim">${r.firstPayDate||'—'}</td>`+
     `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw}">${kw||'—'}</td>`;
 }
+
 const _ADS_COLS=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Keyword'];
+
 function openCampaignDrill(campaign, type){
   const isPaid   = type==='paid';
   const isTrial  = type==='trial';
@@ -1915,6 +1867,7 @@ function openCampaignDrill(campaign, type){
   const label = isPaid ? 'Paid Mrchs · ' : isTrial ? 'Trial · ' : 'Installs · ';
   _openGenericDrill('Campaign', label+nc, _funnelDetails, filter, _ADS_COLS, _adsRowRenderer);
 }
+
 function openKeywordDrill(keyword, type){
   const isPaid=type==='paid';
   const base=isPaid?_paidDetails:_funnelDetails;
@@ -1922,6 +1875,7 @@ function openKeywordDrill(keyword, type){
   const filter=r=>String(r.keyword||'').toLowerCase().trim()===kw&&(isPaid?r.paid:true);
   _openGenericDrill('Keyword',(isPaid?'Paid Mrchs · ':'Installs · ')+keyword, base, filter, _ADS_COLS, _adsRowRenderer);
 }
+
 function openChannelDrill(channel, type){
   const isPaid=type==='paid';
   const base=isPaid?_paidDetails:_funnelDetails;
@@ -1939,6 +1893,7 @@ function openChannelDrill(channel, type){
   };
   _openGenericDrill('Channel',(isPaid?'Paid Mrchs · ':'Installs · ')+channel, base, filter, cols, renderer);
 }
+
 function openLostBucketDrill(bucket){
   const labels={immediate:'Under 1 hour',shortTerm:'1–7 days',longTerm:'Active, not paid'};
   const filters={
@@ -1960,6 +1915,7 @@ function openLostBucketDrill(bucket){
   };
   _openGenericDrill('Non-Converters', labels[bucket]||bucket, _funnelDetails, filters[bucket], cols, renderer);
 }
+
 // ── STAMPS HELPERS ───────────────────────────────────────
 function renderStTable(rows) {
   const stb = document.getElementById('st-tbl');
@@ -1975,11 +1931,16 @@ function renderStTable(rows) {
     const paidCell = r.paid > 0
       ? `<span style="cursor:pointer;color:var(--green);font-weight:600;text-decoration:underline dotted;text-underline-offset:2px;" onclick="openStampDrill('${safeStamp}')">${Number(r.paid).toLocaleString()}</span>`
       : '0';
+    const trialCount = Number(r.trial != null ? r.trial : (r.trials != null ? r.trials : (r.activated != null ? r.activated : 0)));
+    const trialCell = trialCount > 0
+      ? `<span style="cursor:pointer;color:var(--cyan);font-weight:600;text-decoration:underline dotted;text-underline-offset:2px;" onclick="openStampTrialDrill('${safeStamp}')">${trialCount.toLocaleString()}</span>`
+      : '0';
     tr.innerHTML =
       `<td><strong>${r.stamp}</strong></td>`+
       `<td class="num">${Number(r.total).toLocaleString()}</td>`+
       `<td class="num dim">${r.pct}%</td>`+
       `<td class="num">${paidCell}</td>`+
+      `<td class="num">${trialCell}</td>`+
       `<td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td>`+
       `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
       `<td class="num">${r.avgDays}d</td>`+
@@ -1993,10 +1954,27 @@ function renderStTable(rows) {
   if (cnt) cnt.textContent = rows.length + ' stamp' + (rows.length !== 1 ? 's' : '') +
     (_stampsTable.length > rows.length ? ` (filtrado de ${_stampsTable.length})` : '');
 }
+
 function filterStamps(q) {
   const v = (q || '').toLowerCase().trim();
   renderStTable(v ? _stampsTable.filter(r => r.stamp.toLowerCase().includes(v)) : _stampsTable);
 }
+
+function openStampTrialDrill(stamp) {
+  const rows = _funnelDetails.filter(r => r.stamp === stamp && r.activated);
+  const cols = ['Domain', 'Canal', 'País', 'Estado', 'Días Activo', 'Install Date'];
+  const renderer = r => {
+    const sc = r.status === 'Active' ? 'var(--green)' : r.status === 'Churned' ? 'var(--red)' : 'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td>`+
+      `<td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`;
+  };
+  _openGenericDrill(stamp, 'Trial · Stamp', rows, null, cols, renderer);
+}
+
 function openStampDrill(stamp) {
   const rows = _paidDetails.filter(r => r.stamp === stamp);
   const cols = ['Domain', 'Canal', 'País', 'Estado', 'Días Activo', 'Install Date', 'First Pay'];
@@ -2012,6 +1990,7 @@ function openStampDrill(stamp) {
   };
   _openGenericDrill(stamp, 'Paid Merchants · Stamp', rows, null, cols, renderer);
 }
+
 function setStampGran(g, btn) {
   btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -2024,6 +2003,7 @@ function setStampGran(g, btn) {
   freshCanvas('c-st-mon');
   _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), '#0d6e88');
 }
+
 // ── BOOT ─────────────────────────────────────────────────
 function onError(err){
   const msg=document.getElementById('loading-msg');
@@ -2054,5 +2034,3 @@ function onError(err){
 </script>
 </body>
 </html>
-
-este es el que tenías que modificar
