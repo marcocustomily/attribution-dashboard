@@ -874,8 +874,8 @@ body{
       <th onclick="srt('st-tbl-el',0)">Stamp</th>
       <th class="num" onclick="srt('st-tbl-el',1)">Installs</th>
       <th class="num" onclick="srt('st-tbl-el',2)">%</th>
-      <th class="num" onclick="srt('st-tbl-el',3)">Paid</th>
-      <th class="num" onclick="srt('st-tbl-el',4)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('st-tbl-el',3)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('st-tbl-el',4)">Paid</th>
       <th class="num" onclick="srt('st-tbl-el',5)">Conv%</th>
       <th class="num" onclick="srt('st-tbl-el',6)">Churn%</th>
       <th class="num" onclick="srt('st-tbl-el',7)">Avg Days</th>
@@ -1939,8 +1939,8 @@ function renderStTable(rows) {
       `<td><strong>${r.stamp}</strong></td>`+
       `<td class="num">${Number(r.total).toLocaleString()}</td>`+
       `<td class="num dim">${r.pct}%</td>`+
-      `<td class="num">${paidCell}</td>`+
       `<td class="num">${trialCell}</td>`+
+      `<td class="num">${paidCell}</td>`+
       `<td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td>`+
       `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
       `<td class="num">${r.avgDays}d</td>`+
