@@ -2100,10 +2100,11 @@ function filterStampChart(q) {
        : s.byMonth;
     color = '#0d6e88';
   } else {
-    const filtered = (_funnelDetails || []).filter(r => r.stamp && r.stamp.toLowerCase().includes(v));
-    td = gran === 'daily'  ? _aggByDay(filtered)
-       : gran === 'weekly' ? _aggByWeek(filtered)
-       : _aggByMonth(filtered);
+    const raw = (_data.stamps.rawRows || []).filter(r => r.stamp && r.stamp.toLowerCase().includes(v));
+    const fakeRows = raw.map(r => ({ installDate: r.date }));
+    td = gran === 'daily'  ? _aggByDay(fakeRows)
+       : gran === 'weekly' ? _aggByWeek(fakeRows)
+       : _aggByMonth(fakeRows);
     color = '#9b5de5';
   }
 
