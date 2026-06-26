@@ -849,11 +849,25 @@ body{
     <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">Unique Stamps</div><div class="card-val" id="st-unique">—</div><div class="card-sub">tipos de entrada</div></div>
   </div>
   <div class="sec">Installs Over Time
-    <div class="sec-acts"><div class="gran-tog">
-      <button class="gran-btn" onclick="setStampGran('daily',this)">Daily</button>
-      <button class="gran-btn" onclick="setStampGran('weekly',this)">Weekly</button>
-      <button class="gran-btn active" onclick="setStampGran('monthly',this)">Monthly</button>
-    </div></div>
+    <div class="sec-acts" style="gap:10px;">
+      <div style="position:relative;display:flex;align-items:center;">
+        <span style="position:absolute;left:8px;font-size:12px;color:var(--text-3);pointer-events:none;">🔍</span>
+        <input type="text" id="st-chart-search" placeholder="Filtrar por stamp…"
+          style="padding:5px 10px 5px 28px;border-radius:7px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;width:180px;transition:border-color .15s,box-shadow .15s;outline:none;"
+          oninput="filterStampChart(this.value)"
+          onfocus="this.style.borderColor='var(--cyan)';this.style.boxShadow='0 0 0 3px var(--cyan-ring)'"
+          onblur="this.style.borderColor='';this.style.boxShadow=''"
+          list="st-chart-list">
+        <datalist id="st-chart-list"></datalist>
+        <button id="st-chart-clear" onclick="document.getElementById('st-chart-search').value='';filterStampChart('')"
+          style="display:none;position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;line-height:1;padding:0;" title="Limpiar">✕</button>
+      </div>
+      <div class="gran-tog">
+        <button class="gran-btn" onclick="setStampGran('daily',this)">Daily</button>
+        <button class="gran-btn" onclick="setStampGran('weekly',this)">Weekly</button>
+        <button class="gran-btn active" onclick="setStampGran('monthly',this)">Monthly</button>
+      </div>
+    </div>
   </div>
   <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-st-mon"></canvas></div></div>
   <div class="g2" style="margin-bottom:24px;">
@@ -1558,6 +1572,10 @@ function render(data){
     _stampsTable = stamps.table || [];
     renderStTable(_stampsTable);
     document.getElementById('tb5').textContent = stamps.total.toLocaleString();
+    const stDatalist = document.getElementById('st-chart-list');
+    if (stDatalist) {
+      stDatalist.innerHTML = _stampsTable.map(r=>`<option value="${r.stamp}">`).join('');
+    }
   } else {
     const emp = document.getElementById('st-empty');
     if(emp) emp.style.display='block';
@@ -1994,14 +2012,64 @@ function openStampDrill(stamp) {
 function setStampGran(g, btn) {
   btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  const q = (document.getElementById('st-chart-search') || {}).value || '';
+  filterStampChart(q);
+}
+
+function _stGranActive() {
+  const b = document.querySelector('#page-stamps .gran-btn.active');
+  return b ? b.textContent.toLowerCase() : 'monthly';
+}
+
+function _aggByDay(rows) {
+  const m = {};
+  rows.forEach(r => { if (!r.installDate) return; const k = String(r.installDate).substring(0,10); m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+
+function _aggByWeek(rows) {
+  const m = {};
+  rows.forEach(r => {
+    if (!r.installDate) return;
+    const d = new Date(r.installDate); if (isNaN(d)) return;
+    const day = d.getDay(), diff = d.getDate()-day+(day===0?-6:1);
+    const k = new Date(d.getFullYear(),d.getMonth(),diff).toISOString().split('T')[0];
+    m[k]=(m[k]||0)+1;
+  });
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+
+function _aggByMonth(rows) {
+  const m = {};
+  rows.forEach(r => { if (!r.installDate) return; const k=String(r.installDate).substring(0,7); if(k) m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+
+function filterStampChart(q) {
   if (!_data || !_data.stamps) return;
-  const s = _data.stamps;
-  const td = g === 'daily'  ? (s.byDay  || s.byMonth)
-           : g === 'weekly' ? (s.byWeek || s.byMonth)
-           :                   s.byMonth;
+  const v = (q || '').toLowerCase().trim();
+  const gran = _stGranActive();
+  const clearBtn = document.getElementById('st-chart-clear');
+  if (clearBtn) clearBtn.style.display = v ? 'block' : 'none';
+
+  let td, color;
+  if (!v) {
+    const s = _data.stamps;
+    td = gran === 'daily'  ? (s.byDay  || s.byMonth)
+       : gran === 'weekly' ? (s.byWeek || s.byMonth)
+       : s.byMonth;
+    color = '#0d6e88';
+  } else {
+    const filtered = (_funnelDetails || []).filter(r => r.stamp && r.stamp.toLowerCase().includes(v));
+    td = gran === 'daily'  ? _aggByDay(filtered)
+       : gran === 'weekly' ? _aggByWeek(filtered)
+       : _aggByMonth(filtered);
+    color = '#9b5de5';
+  }
+
   if (_ch['c-st-mon']) { _ch['c-st-mon'].destroy(); delete _ch['c-st-mon']; }
   freshCanvas('c-st-mon');
-  _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), '#0d6e88');
+  _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), color);
 }
 
 // ── BOOT ─────────────────────────────────────────────────
