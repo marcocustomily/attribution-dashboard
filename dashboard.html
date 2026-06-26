@@ -1,753 +1,2213 @@
-// ============================================================
-// DASHBOARD WEB APP - Code.gs v10
-// ============================================================
-// BUG CONOCIDO (pendiente fix): adsByKw pisa campo `campaign`
-// con la última fila iterada en vez de la de mayor spend.
-// Fix: actualizar campaign solo cuando r.cost > adsByKw[kw].spend
-// ============================================================
-
-const SHEET_ID = '10I0_0g6JPbKC2rB0L8fgHAa53nkV7g5ej_dJciHOg8s';
-
-// Campaign names ya vienen resueltos desde el Attribution sheet
-
-function doGet(e) {
-  const params = (e && e.parameter) ? e.parameter : {};
-
-  // Endpoint JSON — llamado por fetch() desde el browser
-  if (params.json === '1') {
-    const from = params.from || null;
-    const to   = params.to   || null;
-    const data = getDashboardData(from, to);
-    return ContentService
-      .createTextOutput(JSON.stringify(data))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // HTML estático — sin templates ni scriptlets
-  return HtmlService.createHtmlOutputFromFile('dashboard')
-    .setTitle('Customily Attribution Dashboard')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customily Attribution</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232454f7'/%3E%3Cg fill='white'%3E%3Crect x='5' y='20' width='4' height='7' rx='1'/%3E%3Crect x='11' y='14' width='4' height='13' rx='1'/%3E%3Crect x='17' y='9' width='4' height='18' rx='1'/%3E%3Crect x='23' y='4' width='4' height='23' rx='1'/%3E%3C/g%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root,[data-theme="light"]{
+  --bg:#fafbfc;--surface:#ffffff;--surface-alt:#f6f7f9;--surface-hover:#f0f2f5;
+  --border:#e6e8ed;--border-strong:#d1d5db;--border-subtle:#eef0f3;
+  --text:#0a0e1a;--text-2:#3f4759;--text-3:#6b7384;--text-4:#9ca3b0;
+  --accent:#2454f7;--accent-hover:#1d44d6;--accent-soft:#eef3ff;--accent-ring:rgba(36,84,247,.12);
+  --green:#0f8f5e;--green-soft:#e8f6f0;--green-ring:rgba(15,143,94,.12);
+  --red:#c53050;--red-soft:#fceef1;--red-ring:rgba(197,48,80,.12);
+  --yellow:#a36206;--yellow-soft:#fbf3e3;--yellow-ring:rgba(163,98,6,.12);
+  --purple:#6840d4;--purple-soft:#f1ecfb;--purple-ring:rgba(104,64,212,.12);
+  --cyan:#0d6e88;--cyan-soft:#e3f2f6;--cyan-ring:rgba(13,110,136,.12);
+  --shadow-sm:0 1px 2px rgba(10,14,26,.04);
+  --shadow:0 1px 3px rgba(10,14,26,.06),0 1px 2px rgba(10,14,26,.04);
+  --shadow-lg:0 8px 28px rgba(10,14,26,.08),0 2px 6px rgba(10,14,26,.04);
+  --header-bg:rgba(250,251,252,.85);
+  --grid-line:rgba(10,14,26,.04);
+}
+[data-theme="dark"]{
+  --bg:#070810;--surface:#0e1019;--surface-alt:#141826;--surface-hover:#1c2032;
+  --border:#1f2336;--border-strong:#2c3147;--border-subtle:#161a28;
+  --text:#eef1ff;--text-2:#bcc3da;--text-3:#7e85a3;--text-4:#5c6280;
+  --accent:#5c82ff;--accent-hover:#7392ff;--accent-soft:rgba(92,130,255,.12);--accent-ring:rgba(92,130,255,.2);
+  --green:#2dd991;--green-soft:rgba(45,217,145,.12);--green-ring:rgba(45,217,145,.2);
+  --red:#ff5e7a;--red-soft:rgba(255,94,122,.12);--red-ring:rgba(255,94,122,.2);
+  --yellow:#ffce5c;--yellow-soft:rgba(255,206,92,.12);--yellow-ring:rgba(255,206,92,.2);
+  --purple:#b285ff;--purple-soft:rgba(178,133,255,.12);--purple-ring:rgba(178,133,255,.2);
+  --cyan:#48c9e8;--cyan-soft:rgba(72,201,232,.12);--cyan-ring:rgba(72,201,232,.2);
+  --shadow-sm:none;
+  --shadow:0 0 0 1px rgba(255,255,255,.02);
+  --shadow-lg:0 18px 50px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04);
+  --header-bg:rgba(7,8,16,.85);
+  --grid-line:rgba(255,255,255,.04);
 }
 
-function getDashboardData(dateFrom, dateTo) {
-  Logger.log(typeof dateFrom + ' | value: ' + JSON.stringify(dateFrom));
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+*{margin:0;padding:0;box-sizing:border-box;}
+*:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+html{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:10px;border:2px solid var(--bg);}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter','Syne',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.5;min-height:100vh;
+  font-feature-settings:'cv11','ss01';
+  transition:background .25s,color .2s;
+  -webkit-font-smoothing:antialiased;
+}
+.mono,.font-mono{font-family:'JetBrains Mono',ui-monospace,'SF Mono',monospace;font-feature-settings:'tnum','zero';}
 
-  // ---- DATE RANGE ----
-  const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : new Date('2025-01-01T00:00:00');
-  const toDate   = dateTo   ? new Date(dateTo   + 'T23:59:59') : new Date();
-  toDate.setHours(23,59,59,999);
+/* ── LOADING ── */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:999;}
+.sk-ring{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sk-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);letter-spacing:1.4px;text-transform:uppercase;animation:blink 1.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:.5}50%{opacity:1}}
 
-  // ---- LOAD MONTHLY FUNNEL ----
-  const mfSheet = ss.getSheetByName('Monthly_Funnel');
-  const mfRaw   = mfSheet ? mfSheet.getDataRange().getValues().slice(1) : [];
+/* ── HEADER ── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:var(--header-bg);backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;height:64px;gap:20px;
+  transition:box-shadow .2s,background .25s,border-color .25s;
+}
+.header.scrolled{box-shadow:0 1px 0 var(--border),0 4px 16px rgba(10,14,26,.04);}
+.logo{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.logo-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent) 0%,#3d6fff 100%);
+  display:grid;place-items:center;
+  box-shadow:0 1px 2px rgba(36,84,247,.3),inset 0 1px 0 rgba(255,255,255,.18);
+}
+.logo-mark svg{width:16px;height:16px;}
+.logo-name{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.2px;line-height:1.2;}
+.logo-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:.3px;margin-top:2px;}
 
-  const fromMonth = dateFrom ? String(dateFrom).substring(0, 7) : '2025-01';
-  const toMonth   = dateTo   ? String(dateTo).substring(0, 7)   : '2026-12';
+.hdr-center{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.range-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap;}
+.presets{display:inline-flex;gap:1px;background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.preset-btn{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  padding:5px 12px;border-radius:5px;border:none;
+  background:transparent;color:var(--text-3);cursor:pointer;
+  transition:all .15s;letter-spacing:.2px;
+}
+.preset-btn:hover{color:var(--text);}
+.preset-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
+[data-theme="dark"] .preset-btn.active{background:var(--surface-hover);box-shadow:none;}
 
-  let mfInstalls=0, mfTrials=0, mfPaid=0, mfChurned=0;
-  mfRaw.forEach(r => {
-    const month = r[0] instanceof Date
-      ? `${r[0].getFullYear()}-${String(r[0].getMonth()+1).padStart(2,'0')}`
-      : String(r[0] || '');
-    if (!month) return;
-    if (month >= fromMonth && month <= toMonth) {
-      mfInstalls += Number(r[1]) || 0;
-      mfTrials   += Number(r[2]) || 0;
-      mfPaid     += Number(r[3]) || 0;
-      mfChurned  += Number(r[4]) || 0;
+.custom-range{display:none;align-items:center;gap:6px;position:relative;}
+.custom-range.show{display:flex;}
+.cr-trigger{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;
+  padding:7px 12px;border-radius:7px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  cursor:pointer;transition:all .15s;
+}
+.cr-trigger:hover{border-color:var(--border-strong);background:var(--surface-alt);}
+.cr-trigger svg{width:14px;height:14px;color:var(--text-3);}
+.cr-pop{
+  position:absolute;top:calc(100% + 8px);right:0;z-index:200;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow-lg);
+  padding:16px;display:none;
+  min-width:300px;animation:fadeIn .15s ease;
+}
+.cr-pop.show{display:block;}
+.cr-row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.cr-lbl{font-family:'Inter','Syne',sans-serif;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;}
+.cr-actions{display:flex;gap:8px;margin-top:4px;}
+.d-apply{
+  flex:1;font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:600;
+  padding:9px 14px;border-radius:8px;
+  border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;
+  transition:background .15s;
+}
+.d-apply:hover{background:var(--accent-hover);border-color:var(--accent-hover);}
+.d-cancel{
+  font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:500;
+  padding:9px 14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;
+}
+.d-cancel:hover{background:var(--surface-alt);}
+.dt-input{
+  width:100%;padding:8px 10px;border-radius:7px;
+  border:1px solid var(--border);background:var(--surface-alt);
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;
+  cursor:pointer;
+}
+.dt-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);}
+
+/* ── MONTH PICKER ── */
+.mp-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:'JetBrains Mono',monospace;font-size:13px;
+  padding:9px 12px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-alt);color:var(--text);
+  cursor:pointer;user-select:none;
+  transition:border-color .15s,background .15s;
+  font-feature-settings:'tnum';
+}
+.mp-toggle:hover{border-color:var(--accent);background:var(--surface);}
+.mp-toggle.open{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-ring);}
+.mp-toggle svg{width:12px;height:12px;color:var(--text-3);transition:transform .2s;}
+.mp-toggle.open svg{transform:rotate(180deg);}
+.mp-panel{
+  display:none;margin-top:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:10px;box-shadow:var(--shadow);
+}
+.mp-panel.open{display:block;}
+.mp-nav-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.mp-yr-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text);}
+.mp-nav-btn{
+  background:none;border:1px solid var(--border);color:var(--text-3);
+  border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;
+  transition:all .15s;line-height:1;
+}
+.mp-nav-btn:hover{color:var(--text);background:var(--surface-alt);}
+.mp-months{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;}
+.mp-m{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  padding:7px 4px;border-radius:6px;border:none;
+  background:none;color:var(--text-3);cursor:pointer;
+  transition:background .12s,color .12s;text-align:center;
+}
+.mp-m:hover:not(.mp-dis):not(.mp-sel){background:var(--surface-alt);color:var(--text);}
+.mp-m.mp-sel{background:var(--accent);color:#fff;font-weight:700;}
+.mp-m.mp-dis{opacity:.3;cursor:default;}
+
+.hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.last-upd{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,143,94,.4)}50%{box-shadow:0 0 0 4px transparent}}
+
+.hdr-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;
+  padding:7px 12px;border-radius:7px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  cursor:pointer;transition:all .15s;white-space:nowrap;letter-spacing:-.05px;
+}
+.hdr-btn:hover{border-color:var(--border-strong);color:var(--text);background:var(--surface-alt);}
+.hdr-btn.icon-only{padding:7px 9px;}
+.hdr-btn.loading .rfi{animation:spin .7s linear infinite;}
+.rfi{font-size:13px;}
+
+.theme-tog{display:inline-flex;align-items:center;gap:1px;padding:3px;border-radius:8px;border:1px solid var(--border);background:var(--surface);}
+.t-btn{font-size:13px;width:28px;height:26px;border-radius:5px;border:none;background:transparent;cursor:pointer;display:grid;place-items:center;transition:all .15s;color:var(--text-3);}
+.t-btn:hover{color:var(--text);background:var(--surface-alt);}
+
+/* ── TABS ── */
+.tabs{
+  position:sticky;top:64px;z-index:99;
+  background:var(--header-bg);backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;padding:0 24px;gap:2px;overflow-x:auto;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{
+  padding:0 16px;height:46px;
+  display:flex;align-items:center;
+  font-size:13.5px;font-weight:500;letter-spacing:-.1px;
+  color:var(--text-3);cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .18s;white-space:nowrap;gap:8px;
+}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600;}
+.tab.t-paid.active{border-bottom-color:var(--green);}
+.tab.t-lost.active{border-bottom-color:var(--red);}
+.tab.t-ads.active{border-bottom-color:var(--yellow);}
+.tab.t-ret.active{border-bottom-color:var(--purple);}
+.tab.t-stamps.active{border-bottom-color:#0d6e88;}
+.tab.t-traffic.active{border-bottom-color:var(--purple);}
+.tab-bdg{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;
+  padding:2px 7px;border-radius:100px;
+  background:var(--surface-alt);color:var(--text-3);
+  min-width:22px;text-align:center;letter-spacing:.2px;
+}
+.tab.active .tab-bdg{background:var(--accent-soft);color:var(--accent);}
+.tab.t-paid.active .tab-bdg{background:var(--green-soft);color:var(--green);}
+.tab.t-lost.active .tab-bdg{background:var(--red-soft);color:var(--red);}
+.tab.t-ads.active .tab-bdg{background:var(--yellow-soft);color:var(--yellow);}
+.tab.t-ret.active .tab-bdg{background:var(--purple-soft);color:var(--purple);}
+.tab.t-stamps.active .tab-bdg{background:var(--cyan-soft);color:var(--cyan);}
+.tab.t-traffic.active .tab-bdg{background:var(--purple-soft);color:var(--purple);}
+
+/* ── STAMP SEARCH ── */
+.st-search-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.st-search{
+  flex:1;max-width:320px;
+  padding:8px 12px 8px 34px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-alt);
+  color:var(--text);font-family:'Inter','Syne',sans-serif;font-size:13px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.st-search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);background:var(--surface);}
+.st-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:13px;pointer-events:none;}
+.st-search-rel{position:relative;display:flex;align-items:center;}
+.st-cnt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);}
+
+/* ── DRILL-DOWN MODAL ── */
+#drill-modal{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(10,14,26,.45);backdrop-filter:blur(4px);
+  animation:fadeIn .18s ease;
+}
+#drill-modal.show{display:flex;align-items:flex-start;justify-content:center;padding:48px 24px;}
+.drill-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  box-shadow:var(--shadow-lg);width:100%;max-width:900px;max-height:80vh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.drill-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.drill-title{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px;}
+.drill-stamp-tag{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:6px;
+  background:var(--cyan-soft);color:var(--cyan);
+}
+.drill-metric-tag{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:3px 9px;border-radius:6px;
+  background:var(--surface-alt);color:var(--text-3);
+}
+.drill-hdr-acts{display:flex;gap:8px;align-items:center;}
+.drill-close{
+  width:30px;height:30px;border-radius:7px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text-3);cursor:pointer;
+  display:grid;place-items:center;font-size:15px;transition:all .15s;
+}
+.drill-close:hover{background:var(--surface-alt);color:var(--text);}
+.drill-body{overflow-y:auto;flex:1;padding:0 22px 22px;}
+.drill-summary{
+  display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-subtle);margin-bottom:14px;flex-wrap:wrap;
+}
+.drill-stat{display:flex;flex-direction:column;gap:2px;}
+.drill-stat-v{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--text);}
+.drill-stat-l{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;}
+.drill-exp-btn{
+  font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;
+  padding:6px 12px;border-radius:7px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  cursor:pointer;transition:all .15s;
+}
+.drill-exp-btn:hover{border-color:var(--border-strong);color:var(--text);}
+.drill-link{
+  cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;
+  color:inherit;transition:color .12s;
+}
+.drill-link:hover{color:var(--accent);}
+
+/* ── ALERTS ── */
+#alerts-bar{display:none;padding:10px 28px;background:var(--surface);border-bottom:1px solid var(--border);}
+.al-inner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.al-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  padding:5px 11px;border-radius:100px;
+  border:1px solid transparent;
+}
+.al-pill.warn{background:var(--yellow-soft);color:var(--yellow);border-color:var(--yellow-ring);}
+.al-pill.danger{background:var(--red-soft);color:var(--red);border-color:var(--red-ring);}
+.al-pill.ok{background:var(--green-soft);color:var(--green);border-color:var(--green-ring);}
+.al-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+/* ── PAGE LAYOUT ── */
+.page{display:none;padding:32px 28px 48px;max-width:1680px;margin:0 auto;}
+.page.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+.sec{
+  font-size:11px;font-weight:600;color:var(--text-3);
+  letter-spacing:.6px;text-transform:uppercase;
+  margin-bottom:14px;margin-top:36px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.sec:first-child{margin-top:0;}
+.sec-title{display:inline-flex;align-items:center;gap:10px;}
+.sec-title::before{
+  content:'';display:inline-block;width:3px;height:14px;
+  background:var(--accent);border-radius:2px;flex-shrink:0;
+}
+.sec-acts{display:flex;gap:6px;align-items:center;}
+.sec-act{
+  font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;
+  padding:6px 12px;border-radius:7px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  cursor:pointer;transition:all .15s;
+}
+.sec-act:hover{border-color:var(--border-strong);color:var(--text);background:var(--surface-alt);}
+
+/* ── GRIDS ── */
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
+
+/* ── KPI CARDS ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:20px 22px;position:relative;overflow:hidden;
+  box-shadow:var(--shadow-sm);
+  transition:border-color .2s,background .25s,box-shadow .2s;
+}
+.card::before{
+  content:'';position:absolute;top:14px;left:0;width:3px;height:24px;
+  background:var(--card-accent,transparent);border-radius:0 3px 3px 0;opacity:.85;
+}
+.card:hover{border-color:var(--border-strong);box-shadow:var(--shadow);}
+.card-lbl{
+  font-family:'Inter','Syne',sans-serif;
+  font-size:12px;font-weight:500;color:var(--text-3);
+  letter-spacing:-.05px;margin-bottom:12px;
+  display:flex;align-items:center;gap:6px;
+}
+.card-val{
+  font-family:'Inter','Syne',sans-serif;
+  font-size:34px;font-weight:600;line-height:1.1;
+  color:var(--card-color,var(--text));
+  letter-spacing:-1.2px;cursor:copy;
+  font-feature-settings:'tnum','ss01';
+}
+.card-val:active{opacity:.6;}
+.card-sub{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--text-3);margin-top:10px;
+  letter-spacing:.1px;display:flex;align-items:center;gap:5px;
+}
+
+/* ── INSIGHTS ── */
+.insights{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+.ins{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:var(--shadow-sm);
+  transition:border-color .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.ins:hover{border-color:var(--border-strong);box-shadow:var(--shadow);}
+.ins::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--text-4);}
+.ins.ok::before{background:var(--green);}
+.ins.warn::before{background:var(--yellow);}
+.ins.danger::before{background:var(--red);}
+.ins-ico{
+  font-size:14px;width:28px;height:28px;border-radius:7px;
+  display:grid;place-items:center;
+  background:var(--surface-alt);color:var(--text-2);
+}
+.ins.ok .ins-ico{background:var(--green-soft);color:var(--green);}
+.ins.warn .ins-ico{background:var(--yellow-soft);color:var(--yellow);}
+.ins.danger .ins-ico{background:var(--red-soft);color:var(--red);}
+.ins-ttl{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.15px;}
+.ins-bod{font-family:'Inter','Syne',sans-serif;font-size:12.5px;color:var(--text-3);line-height:1.55;}
+
+/* ── FUNNEL ── */
+.funnel-row{display:flex;align-items:center;gap:18px;margin-bottom:14px;}
+.funnel-row:last-child{margin-bottom:0;}
+.funnel-meta{width:200px;flex-shrink:0;}
+.funnel-lbl{font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;color:var(--text-3);letter-spacing:-.05px;margin-bottom:4px;}
+.funnel-pct{font-family:'Inter','Syne',sans-serif;font-size:28px;font-weight:600;line-height:1;letter-spacing:-.8px;font-feature-settings:'tnum';}
+.funnel-track{flex:1;height:48px;background:var(--surface-alt);border-radius:10px;overflow:hidden;border:1px solid var(--border-subtle);}
+.funnel-fill{height:100%;border-radius:9px;display:flex;align-items:center;justify-content:flex-end;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;letter-spacing:.3px;color:#fff;transition:width 1s cubic-bezier(.16,1,.3,1);box-shadow:inset 0 1px 0 rgba(255,255,255,.15);}
+[data-theme="dark"] .funnel-fill{color:#070810;}
+
+/* ── QUALITY BARS ── */
+.qual-row{margin-bottom:18px;}
+.qual-row:last-child{margin-bottom:0;}
+.qual-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:12px;}
+.qual-nm{font-family:'Inter','Syne',sans-serif;font-size:13px;color:var(--text-2);font-weight:500;letter-spacing:-.05px;}
+.qual-vl{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--green);font-feature-settings:'tnum';}
+.qual-trk{height:6px;background:var(--surface-alt);border-radius:100px;overflow:hidden;border:1px solid var(--border-subtle);}
+.qual-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--green) 0%,#3dd49f 100%);transition:width 1.2s cubic-bezier(.16,1,.3,1);}
+
+/* ── CHART CARDS ── */
+.cc{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:24px;box-shadow:var(--shadow-sm);
+  transition:border-color .2s,box-shadow .2s;
+}
+.cc:hover{border-color:var(--border-strong);box-shadow:var(--shadow);}
+.cc-ttl{
+  font-family:'Inter','Syne',sans-serif;
+  font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.15px;
+  margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+}
+.bdg{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;
+  padding:3px 8px;border-radius:100px;
+  background:var(--surface-alt);color:var(--text-3);letter-spacing:.3px;border:1px solid var(--border);
+}
+.gran-tog{display:inline-flex;gap:1px;background:var(--surface-alt);border:1px solid var(--border);border-radius:7px;padding:2px;}
+.gran-btn{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  padding:5px 11px;border-radius:5px;border:none;
+  background:transparent;color:var(--text-3);cursor:pointer;transition:all .15s;
+}
+.gran-btn:hover{color:var(--text);}
+.gran-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:var(--shadow-sm);font-weight:600;}
+[data-theme="dark"] .gran-btn.active{background:var(--accent-soft);color:var(--accent);box-shadow:none;}
+
+/* ── TABLES ── */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border-subtle);}
+.tbl-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
+.tbl-cnt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);}
+.tbl-act{
+  font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;
+  padding:5px 11px;border-radius:6px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text-2);
+  cursor:pointer;transition:all .15s;
+}
+.tbl-act:hover{border-color:var(--border-strong);color:var(--text);background:var(--surface-alt);}
+.tbl{width:100%;border-collapse:collapse;font-family:'Inter','Syne',sans-serif;font-size:13px;}
+.tbl th{
+  padding:12px 16px;
+  font-family:'Inter','Syne',sans-serif;
+  color:var(--text-3);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.7px;
+  border-bottom:1px solid var(--border);
+  text-align:left;white-space:nowrap;cursor:pointer;user-select:none;
+  transition:color .15s,background .15s;
+  background:var(--surface-alt);position:sticky;top:0;
+}
+.tbl th:hover{color:var(--text);}
+.tbl th.sorted{color:var(--accent);}
+.tbl th.s-desc::after{content:' ↓';font-size:10px;}
+.tbl th.s-asc::after{content:' ↑';font-size:10px;}
+.tbl td{
+  padding:13px 16px;border-bottom:1px solid var(--border-subtle);
+  color:var(--text);white-space:nowrap;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;font-feature-settings:'tnum';
+}
+.tbl td:first-child{font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:500;color:var(--text);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tbody tr{transition:background .12s;}
+.tbl tbody tr:hover td{background:var(--surface-alt);}
+.tbl .num{text-align:right;}
+.tbl .dim{color:var(--text-3);}
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:100px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.2px;border:1px solid transparent;}
+.p-g{background:var(--green-soft);color:var(--green);border-color:var(--green-ring);}
+.p-y{background:var(--yellow-soft);color:var(--yellow);border-color:var(--yellow-ring);}
+.p-r{background:var(--red-soft);color:var(--red);border-color:var(--red-ring);}
+.p-m{background:var(--surface-alt);color:var(--text-3);border-color:var(--border);}
+.conv-bar{height:8px;background:var(--surface-alt);border-radius:100px;overflow:hidden;min-width:100px;border:1px solid var(--border-subtle);}
+.conv-fill{height:100%;background:linear-gradient(90deg,var(--green) 0%,#3dd49f 100%);border-radius:100px;}
+
+/* ── LOST BUCKETS ── */
+.bkt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.bkt{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:24px 22px;text-align:left;box-shadow:var(--shadow-sm);
+  transition:border-color .2s,box-shadow .2s;position:relative;overflow:hidden;
+}
+.bkt:hover{border-color:var(--border-strong);box-shadow:var(--shadow);}
+.bkt-ico{font-size:18px;width:36px;height:36px;border-radius:9px;background:var(--surface-alt);display:grid;place-items:center;margin-bottom:14px;}
+.bkt-val{font-family:'Inter','Syne',sans-serif;font-size:36px;font-weight:600;line-height:1;letter-spacing:-1.2px;font-feature-settings:'tnum';}
+.bkt-lbl{font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);margin-top:10px;letter-spacing:-.1px;}
+.bkt-hint{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-top:4px;letter-spacing:.1px;}
+
+/* ── SHOPIFY BANNER ── */
+.spy-bnr{
+  display:flex;align-items:center;gap:14px;padding:14px 20px;
+  background:linear-gradient(135deg,var(--cyan-soft) 0%,transparent 100%);
+  border:1px solid var(--cyan-ring);border-radius:12px;margin-bottom:16px;
+}
+.spy-ico{width:34px;height:34px;border-radius:9px;background:var(--surface);display:grid;place-items:center;font-size:15px;box-shadow:var(--shadow-sm);}
+.spy-nm{font-size:14px;font-weight:600;color:var(--cyan);letter-spacing:-.1px;}
+.spy-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-top:2px;}
+.spy-cc{border-color:var(--cyan-ring) !important;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.tst{font-family:'Inter','Syne',sans-serif;font-size:13px;font-weight:500;padding:10px 16px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);animation:su .2s ease;pointer-events:auto;box-shadow:var(--shadow-lg);letter-spacing:-.05px;}
+.tst.success{border-color:var(--green-ring);color:var(--green);}
+.tst.error{border-color:var(--red-ring);color:var(--red);}
+@keyframes su{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── MODAL ── */
+#smod{display:none;position:fixed;inset:0;background:rgba(10,14,26,.5);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+[data-theme="dark"] #smod{background:rgba(0,0,0,.65);}
+#smod.show{display:flex;animation:fadeIn .15s ease;}
+.mbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;min-width:400px;box-shadow:var(--shadow-lg);}
+.mttl{font-family:'Inter','Syne',sans-serif;font-size:16px;font-weight:600;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;color:var(--text);letter-spacing:-.15px;}
+.mcls{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-2);cursor:pointer;border:1px solid var(--border);background:var(--surface-alt);width:28px;height:28px;border-radius:7px;display:grid;place-items:center;}
+.mcls:hover{color:var(--text);background:var(--surface-hover);}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border-subtle);}
+.srow:last-child{border-bottom:none;}
+.sdesc{font-family:'Inter','Syne',sans-serif;font-size:13px;color:var(--text-2);font-weight:500;letter-spacing:-.05px;}
+.skey{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);box-shadow:0 1px 0 var(--border);min-width:24px;text-align:center;}
+
+/* ── FOOTER ── */
+.footer{padding:20px 28px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;max-width:1680px;margin:0 auto;}
+.flinks{display:flex;gap:18px;}
+.flink{color:var(--text-2);cursor:pointer;transition:color .15s;font-weight:500;}
+.flink:hover{color:var(--accent);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){
+  .g4,.g5{grid-template-columns:repeat(2,1fr);}
+  .g3{grid-template-columns:repeat(2,1fr);}
+  .bkt-grid{grid-template-columns:1fr;}
+  .insights{grid-template-columns:1fr;}
+  .hdr-center{display:none;}
+}
+@media(max-width:700px){
+  .g2,.g3,.g4,.g5{grid-template-columns:1fr;}
+  .header{padding:0 16px;height:56px;}
+  .tabs{padding:0 8px;top:56px;}
+  .page{padding:20px 16px 36px;}
+  .logo-sub{display:none;}
+  .tab{padding:0 12px;font-size:12.5px;height:42px;}
+  .card-val{font-size:30px;}
+  .funnel-meta{width:140px;}
+  .funnel-pct{font-size:22px;}
+  .footer{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="sk-ring"></div>
+  <div class="sk-text" id="loading-msg">Cargando datos de atribución</div>
+</div>
+
+<div id="app" style="display:none;">
+
+<div class="header" id="hdr">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div><div class="logo-name">Customily</div><div class="logo-sub">Attribution · Shopify</div></div>
+  </div>
+  <div class="hdr-center">
+    <span class="range-label">Range:</span>
+    <div class="presets">
+      <button class="preset-btn" onclick="setPreset('7d',this)">7D</button>
+      <button class="preset-btn" onclick="setPreset('30d',this)">30D</button>
+      <button class="preset-btn" onclick="setPreset('mtd',this)">MTD</button>
+      <button class="preset-btn active" onclick="setPreset('ytd',this)">YTD</button>
+      <button class="preset-btn" onclick="setPreset('custom',this)">Custom</button>
+    </div>
+    <div class="custom-range" id="crw">
+      <button class="cr-trigger" onclick="document.getElementById('cr-pop').classList.toggle('show')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span id="cr-display">Seleccionar meses</span>
+      </button>
+      <div class="cr-pop" id="cr-pop">
+        <div class="cr-row">
+          <label class="cr-lbl">Desde</label>
+          <input type="date" id="dt-from" class="dt-input" value="2025-01-01">
+        </div>
+        <div class="cr-row">
+          <label class="cr-lbl">Hasta</label>
+          <input type="date" id="dt-to" class="dt-input">
+        </div>
+        <div class="cr-actions">
+          <button class="d-cancel" onclick="document.getElementById('cr-pop').classList.remove('show')">Cancelar</button>
+          <button class="d-apply" onclick="applyCustom()">Aplicar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="theme-tog" title="Cambiar tema">
+      <button class="t-btn" data-t="light" onclick="setTheme('light')" title="Claro">☀</button>
+      <button class="t-btn" data-t="dark"  onclick="setTheme('dark')"  title="Oscuro">◑</button>
+      <button class="t-btn" data-t="auto"  onclick="setTheme('auto')"  title="Auto">⊙</button>
+    </div>
+    <div class="last-upd" id="last-upd"><span class="live-dot"></span>—</div>
+    <button class="hdr-btn" id="rfbtn" onclick="manualRefresh()"><span class="rfi">⟳</span> Refresh</button>
+    <button class="hdr-btn icon-only" onclick="toggleSh()" title="Shortcuts">⌨</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active"   onclick="switchTab('funnel',this)">Full Funnel <span class="tab-bdg" id="tb0">—</span></div>
+  <div class="tab t-paid"   onclick="switchTab('paid',this)">Paid Merchants <span class="tab-bdg" id="tb1">—</span></div>
+  <div class="tab t-lost"   onclick="switchTab('lost',this)">Lost <span class="tab-bdg" id="tb2">—</span></div>
+  <div class="tab t-ads"    onclick="switchTab('ads',this)">Google Ads <span class="tab-bdg" id="tb3">—</span></div>
+  <div class="tab t-ret"    onclick="switchTab('retention',this)">Retention <span class="tab-bdg" id="tb4">—</span></div>
+  <div class="tab t-stamps" onclick="switchTab('stamps',this)">Stamps <span class="tab-bdg" id="tb5">—</span></div>
+  <div class="tab t-traffic" onclick="switchTab('traffic',this)">Traffic Sources <span class="tab-bdg" id="tb6">—</span></div>
+</div>
+<div id="alerts-bar"><div class="al-inner" id="al-inner"></div></div>
+
+<!-- FULL FUNNEL -->
+<div class="page active" id="page-funnel">
+  <div class="sec"><span class="sec-title">Insights</span></div>
+  <div class="insights" id="ins-panel"></div>
+  <div class="sec"><span class="sec-title">Conversion Funnel</span></div>
+  <div class="cc" style="margin-bottom:24px;"><div id="funnel-viz"></div></div>
+  <div class="sec"><span class="sec-title">Overview</span></div>
+  <div class="g4" style="margin-bottom:24px;">
+    <div class="card" style="--card-accent:var(--accent);--card-color:var(--accent)"><div class="card-lbl">Total Installs <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-total" onclick="openFunnelDrill('all')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-unique">—</div></div>
+    <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">Paid Merchants <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-paid" onclick="openFunnelDrill('paid')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-conv">—</div></div>
+    <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Currently Active <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-active" onclick="openFunnelDrill('active')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub">installed &amp; active</div></div>
+    <div class="card" style="--card-accent:var(--red);--card-color:var(--red)"><div class="card-lbl">Dropped <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-churned" onclick="openFunnelDrill('churned')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-churnrate">—</div></div>
+  </div>
+  <div class="sec"><span class="sec-title">Install Quality</span></div>
+  <div class="cc" style="margin-bottom:24px;padding:22px;"><div id="quality-bars"></div></div>
+  <div class="sec"><span class="sec-title">Installs Over Time</span>
+    <div class="sec-acts"><div class="gran-tog">
+      <button class="gran-btn" onclick="setGran('all','daily',this)">Daily</button>
+      <button class="gran-btn active" onclick="setGran('all','weekly',this)">Weekly</button>
+      <button class="gran-btn" onclick="setGran('all','monthly',this)">Monthly</button>
+    </div></div>
+  </div>
+  <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-wk-all"></canvas></div></div>
+  <div class="sec"><span class="sec-title">Channel Performance</span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('ch-tbody','channels')">↓ CSV</button></div>
+  </div>
+  <div class="cc" style="margin-bottom:24px;">
+    <div class="tbl-meta"><span class="tbl-cnt" id="ch-cnt">—</span></div>
+    <div class="tbl-wrap"><table class="tbl" id="ch-tbl">
+      <thead><tr>
+        <th onclick="srt('ch-tbl',0)">Channel</th>
+        <th class="num" onclick="srt('ch-tbl',1)">Installs</th>
+        <th class="num" onclick="srt('ch-tbl',2)">Activated</th>
+        <th class="num" onclick="srt('ch-tbl',3)">Act%</th>
+        <th class="num" onclick="srt('ch-tbl',4)">Paid Merchants</th>
+        <th class="num" onclick="srt('ch-tbl',5)">Conv%</th>
+        <th style="min-width:100px;">Rate</th>
+      </tr></thead>
+      <tbody id="ch-tbody"></tbody>
+    </table></div>
+  </div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc">
+      <div class="cc-ttl">Top Countries <span class="bdg">Installs vs Paid</span><button class="tbl-act" onclick="expTbl('co-tbody','countries')">↓ CSV</button></div>
+      <div class="tbl-wrap"><table class="tbl" id="co-tbl"><thead><tr><th onclick="srt('co-tbl',0)">Country</th><th class="num" onclick="srt('co-tbl',1)">Installs</th><th class="num" onclick="srt('co-tbl',2)">Paid Mrchs</th><th class="num" onclick="srt('co-tbl',3)">Conv%</th></tr></thead><tbody id="co-tbody"></tbody></table></div>
+    </div>
+    <div class="cc">
+      <div class="cc-ttl">Top Keywords <span class="bdg">Installs vs Paid</span><button class="tbl-act" onclick="expTbl('kw-tbody','keywords')">↓ CSV</button></div>
+      <div class="tbl-wrap"><table class="tbl" id="kw-tbl"><thead><tr><th onclick="srt('kw-tbl',0)">Keyword</th><th class="num" onclick="srt('kw-tbl',1)">Installs</th><th class="num" onclick="srt('kw-tbl',2)">Paid Mrchs</th><th class="num" onclick="srt('kw-tbl',3)">Conv%</th></tr></thead><tbody id="kw-tbody"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAID MERCHANTS -->
+<div class="page" id="page-paid">
+  <div class="sec"><span class="sec-title">Insights</span></div>
+  <div class="insights" id="ins-paid"></div>
+  <div class="sec"><span class="sec-title">Paid Merchants Overview</span></div>
+  <div class="g5" style="margin-bottom:24px;">
+    <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">Paid Merchants <span style="font-size:10px;opacity:.5;font-weight:400;">· click detalle</span></div><div class="card-val" id="p-total" onclick="openPaidDrill('all')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub">total</div></div>
+    <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Active <span style="font-size:10px;opacity:.5;font-weight:400;">· click detalle</span></div><div class="card-val" id="p-active" onclick="openPaidDrill('active')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub">subscribed</div></div>
+    <div class="card" style="--card-accent:var(--red);--card-color:var(--red)"><div class="card-lbl">Churned <span style="font-size:10px;opacity:.5;font-weight:400;">· click detalle</span></div><div class="card-val" id="p-churned" onclick="openPaidDrill('churned')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="p-cr">—</div></div>
+    <div class="card" style="--card-accent:var(--yellow);--card-color:var(--yellow)"><div class="card-lbl">Avg Days</div><div class="card-val" id="p-avgd" onclick="cv(this)">—</div><div class="card-sub">active</div></div>
+    <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">Revenue</div><div class="card-val" id="p-rev" style="font-size:26px;" onclick="cv(this)">—</div><div class="card-sub">first payments USD</div></div>
+  </div>
+  <div class="sec">Paid Merchants Over Time<div class="sec-acts"><div class="gran-tog"><button class="gran-btn" onclick="setGran('paid','daily',this)">Daily</button><button class="gran-btn active" onclick="setGran('paid','weekly',this)">Weekly</button><button class="gran-btn" onclick="setGran('paid','monthly',this)">Monthly</button></div></div></div>
+  <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-wk-paid"></canvas></div></div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">By Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-ch"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">By Country (Top 15)</div><div style="position:relative;height:280px;"><canvas id="c-p-co"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><div class="cc-ttl">Churn Rate by Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-churn"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Avg Days Active by Channel</div><div style="position:relative;height:280px;"><canvas id="c-p-avgd"></canvas></div></div>
+  </div>
+
+  <div class="sec"><span class="sec-title">By Stamp</span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('p-stamp-tbody','paid-by-stamp')">↓ CSV</button></div>
+  </div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc">
+      <div class="cc-ttl">Top Stamps · Paid Merchants <span class="bdg">por volumen</span></div>
+      <div style="position:relative;height:380px;"><canvas id="c-p-stamp"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-ttl">Conv Rate por Stamp <span class="bdg">installs → paid</span></div>
+      <div style="position:relative;height:380px;"><canvas id="c-p-stamp-conv"></canvas></div>
+    </div>
+  </div>
+  <div class="cc" style="margin-bottom:24px;">
+    <div class="tbl-wrap"><table class="tbl" id="p-stamp-tbl">
+      <thead><tr>
+        <th onclick="srt('p-stamp-tbl',0)">Stamp</th>
+        <th class="num" onclick="srt('p-stamp-tbl',1)">Paid</th>
+        <th class="num" onclick="srt('p-stamp-tbl',2)">% del Total</th>
+        <th class="num" onclick="srt('p-stamp-tbl',3)">Installs</th>
+        <th class="num" onclick="srt('p-stamp-tbl',4)">Conv%</th>
+        <th class="num" onclick="srt('p-stamp-tbl',5)">Active</th>
+        <th class="num" onclick="srt('p-stamp-tbl',6)">Churned</th>
+        <th class="num" onclick="srt('p-stamp-tbl',7)">Churn%</th>
+        <th class="num" onclick="srt('p-stamp-tbl',8)">Avg Days</th>
+      </tr></thead>
+      <tbody id="p-stamp-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- LOST -->
+<div class="page" id="page-lost">
+  <div class="sec"><span class="sec-title">Insights</span></div>
+  <div class="insights" id="ins-lost"></div>
+  <div class="sec"><span class="sec-title">Non-Converters</span></div>
+  <div class="bkt-grid" style="margin-bottom:24px;">
+    <div class="bkt" style="cursor:pointer;" onclick="openLostBucketDrill('immediate')" title="Ver detalle"><div class="bkt-ico">⚡</div><div class="bkt-val" id="l-imm" style="color:var(--red)">—</div><div class="bkt-lbl">Under 1 hour <span style="font-size:10px;opacity:.5;">· click</span></div><div class="bkt-hint">Testing or wrong fit</div></div>
+    <div class="bkt" style="cursor:pointer;" onclick="openLostBucketDrill('shortTerm')" title="Ver detalle"><div class="bkt-ico">📅</div><div class="bkt-val" id="l-sh"  style="color:var(--yellow)">—</div><div class="bkt-lbl">1–7 days <span style="font-size:10px;opacity:.5;">· click</span></div><div class="bkt-hint">Onboarding or pricing</div></div>
+    <div class="bkt" style="cursor:pointer;" onclick="openLostBucketDrill('longTerm')" title="Ver detalle"><div class="bkt-ico">📦</div><div class="bkt-val" id="l-lg"  style="color:var(--cyan)">—</div><div class="bkt-lbl">Active, not paid <span style="font-size:10px;opacity:.5;">· click</span></div><div class="bkt-hint">Still evaluating</div></div>
+  </div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">Lost by Channel</div><div style="position:relative;height:280px;"><canvas id="c-l-ch"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Time to Drop <span class="bdg">sorted by count</span></div><div style="position:relative;height:280px;"><canvas id="c-l-ttc"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><div class="cc-ttl">Lost by Country (Top 15)</div><div style="position:relative;height:300px;"><canvas id="c-l-co"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Uninstall Reasons</div><div style="position:relative;height:300px;"><canvas id="c-l-rsn"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ADS -->
+<div class="page" id="page-ads">
+  <div class="sec"><span class="sec-title">Insights</span></div>
+  <div class="insights" id="ins-ads"></div>
+  <div class="sec"><span class="sec-title">Performance Overview</span></div>
+  <div class="g5" style="margin-bottom:24px;">
+    <div class="card" style="--card-accent:var(--yellow);--card-color:var(--yellow)"><div class="card-lbl">Total Spend</div><div class="card-val" id="a-spend" style="font-size:26px;" onclick="cv(this)">—</div><div class="card-sub">USD · Shopify camps.</div></div>
+    <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Clicks</div><div class="card-val" id="a-clicks" onclick="cv(this)">—</div><div class="card-sub" id="a-ctr">—</div></div>
+    <div class="card" style="--card-accent:var(--accent);--card-color:var(--accent)"><div class="card-lbl">Avg CPC</div><div class="card-val" id="a-cpc" onclick="cv(this)">—</div><div class="card-sub">per click</div></div>
+    <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">CPI</div><div class="card-val" id="a-cpi" onclick="cv(this)">—</div><div class="card-sub" id="a-inst">—</div></div>
+    <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">CPA</div><div class="card-val" id="a-cpa" onclick="cv(this)">—</div><div class="card-sub" id="a-paid">—</div></div>
+  </div>
+  <div class="sec">Campaigns (Shopify only)<div class="sec-acts"><button class="sec-act" onclick="expTbl('a-camp','campaigns')">↓ CSV</button></div></div>
+  <div class="cc" style="margin-bottom:24px;"><div class="tbl-wrap"><table class="tbl" id="camp-tbl">
+    <thead><tr>
+      <th onclick="srt('camp-tbl',0)">Campaign</th>
+      <th class="num" onclick="srt('camp-tbl',1)">Spend</th>
+      <th class="num" onclick="srt('camp-tbl',2)">Clicks</th>
+      <th class="num" onclick="srt('camp-tbl',3)">CTR</th>
+      <th class="num" onclick="srt('camp-tbl',4)">Installs</th>
+      <th class="num" onclick="srt('camp-tbl',5)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('camp-tbl',6)">Paid Mrchs</th>
+      <th class="num" onclick="srt('camp-tbl',7)">Conv%</th>
+      <th class="num" onclick="srt('camp-tbl',8)">CPI</th>
+      <th class="num" onclick="srt('camp-tbl',9)">CPA</th>
+      <th class="num" onclick="srt('camp-tbl',10)">Drop%</th>
+      <th class="num" onclick="srt('camp-tbl',11)">Avg Days</th>
+    </tr></thead>
+    <tbody id="a-camp"></tbody>
+  </table></div></div>
+  <div class="sec">Keywords (Shopify only)<div class="sec-acts"><button class="sec-act" onclick="expTbl('a-kw','kw-ads')">↓ CSV</button></div></div>
+  <div class="cc" style="margin-bottom:24px;"><div class="tbl-wrap"><table class="tbl" id="kw-ads-tbl">
+    <thead><tr>
+      <th onclick="srt('kw-ads-tbl',0)">Keyword</th>
+      <th onclick="srt('kw-ads-tbl',1)">Campaign</th>
+      <th class="num" onclick="srt('kw-ads-tbl',2)">Spend</th>
+      <th class="num" onclick="srt('kw-ads-tbl',3)">Clicks</th>
+      <th class="num" onclick="srt('kw-ads-tbl',4)">Installs</th>
+      <th class="num" onclick="srt('kw-ads-tbl',5)">Paid Mrchs</th>
+      <th class="num" onclick="srt('kw-ads-tbl',6)">Conv%</th>
+      <th class="num" onclick="srt('kw-ads-tbl',7)">CPI</th>
+      <th class="num" onclick="srt('kw-ads-tbl',8)">CPA</th>
+      <th class="num" onclick="srt('kw-ads-tbl',9)">Drop%</th>
+    </tr></thead>
+    <tbody id="a-kw"></tbody>
+  </table></div></div>
+  <div class="spy-bnr"><div class="spy-ico">🛍</div><div><div class="spy-nm">Shopify App Store</div><div class="spy-sub">Surface &amp; organic — separate from Google Ads</div></div></div>
+  <div class="g2">
+    <div class="cc spy-cc"><div class="cc-ttl">Visits by Surface <span class="bdg" style="background:var(--cyan-soft);color:var(--cyan);">App Store</span></div><div style="position:relative;height:280px;"><canvas id="c-srf"></canvas></div></div>
+    <div class="cc spy-cc"><div class="cc-ttl">Organic Keywords <span class="bdg" style="background:var(--cyan-soft);color:var(--cyan);">App Store</span></div><div style="position:relative;height:280px;"><canvas id="c-skw"></canvas></div></div>
+  </div>
+</div>
+
+<!-- RETENTION -->
+<div class="page" id="page-retention">
+  <div class="sec"><span class="sec-title">Drop &amp; Churn Analysis</span></div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">Time to Drop — All <span class="bdg">sorted by count</span></div><div style="position:relative;height:280px;"><canvas id="c-r-ttc"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Time to Churn — Paid Merchants <span class="bdg">sorted by count</span></div><div style="position:relative;height:280px;"><canvas id="c-r-ttcp"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><div class="cc-ttl">Uninstall Reasons</div><div style="position:relative;height:300px;"><canvas id="c-r-rsn"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Conv Rate by Channel</div><div style="position:relative;height:300px;"><canvas id="c-r-ch"></canvas></div></div>
+  </div>
+</div>
+
+<!-- STAMPS -->
+<div class="page" id="page-stamps">
+  <div class="sec"><span class="sec-title">Stamps Overview</span></div>
+  <div class="g5" style="margin-bottom:24px;">
+    <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Total Installs</div><div class="card-val" id="st-total">—</div><div class="card-sub">con stamp identificado</div></div>
+    <div class="card" style="--card-accent:var(--accent);--card-color:var(--accent)"><div class="card-lbl">Shopify</div><div class="card-val" id="st-shopify">—</div><div class="card-sub">installs</div></div>
+    <div class="card" style="--card-accent:var(--yellow);--card-color:var(--yellow)"><div class="card-lbl">Etsy</div><div class="card-val" id="st-etsy">—</div><div class="card-sub">installs</div></div>
+    <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">WooCommerce</div><div class="card-val" id="st-woo">—</div><div class="card-sub">installs</div></div>
+    <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">Unique Stamps</div><div class="card-val" id="st-unique">—</div><div class="card-sub">tipos de entrada</div></div>
+  </div>
+  <div class="sec">Installs Over Time
+    <div class="sec-acts" style="gap:10px;">
+      <div style="position:relative;display:flex;align-items:center;" id="st-chart-ac-wrap">
+        <span style="position:absolute;left:8px;font-size:12px;color:var(--text-3);pointer-events:none;">🔍</span>
+        <input type="text" id="st-chart-search" placeholder="Filtrar por stamp…" autocomplete="off"
+          style="padding:5px 28px 5px 28px;border-radius:7px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;width:200px;transition:border-color .15s,box-shadow .15s;outline:none;"
+          oninput="filterStampChart(this.value);_stAcShow(this.value)"
+          onfocus="this.style.borderColor='var(--cyan)';this.style.boxShadow='0 0 0 3px var(--cyan-ring)';_stAcShow(this.value)"
+          onblur="setTimeout(()=>_stAcHide(),180)"
+          onkeydown="_stAcKey(event)">
+        <button id="st-chart-clear" onclick="document.getElementById('st-chart-search').value='';filterStampChart('');_stAcHide()"
+          style="display:none;position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;line-height:1;padding:0;" title="Limpiar">✕</button>
+        <div id="st-ac-drop" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);min-width:220px;max-height:240px;overflow-y:auto;padding:4px;"></div>
+      </div>
+      <div class="gran-tog">
+        <button class="gran-btn" onclick="setStampGran('daily',this)">Daily</button>
+        <button class="gran-btn" onclick="setStampGran('weekly',this)">Weekly</button>
+        <button class="gran-btn active" onclick="setStampGran('monthly',this)">Monthly</button>
+      </div>
+    </div>
+  </div>
+  <div id="st-selected-pills" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
+  <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-st-mon"></canvas></div></div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">Top 20 Stamps <span class="bdg">por volumen</span></div><div style="position:relative;height:480px;"><canvas id="c-st-top"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Por Plataforma</div><div style="position:relative;height:280px;"><canvas id="c-st-plat"></canvas></div></div>
+  </div>
+  <div class="sec">Stamps Detail<div class="sec-acts"><button class="sec-act" onclick="expTbl('st-tbl','stamps')">↓ CSV</button></div></div>
+  <div class="cc">
+    <div class="st-search-wrap">
+      <div class="st-search-rel">
+        <span class="st-search-ico">🔍</span>
+        <input type="text" class="st-search" id="st-search" placeholder="Buscar stamp…" oninput="filterStamps(this.value)">
+      </div>
+      <span class="st-cnt" id="st-cnt"></span>
+    </div>
+    <div class="tbl-wrap"><table class="tbl" id="st-tbl-el">
+    <thead><tr>
+      <th onclick="srt('st-tbl-el',0)">Stamp</th>
+      <th class="num" onclick="srt('st-tbl-el',1)">Installs</th>
+      <th class="num" onclick="srt('st-tbl-el',2)">%</th>
+      <th class="num" onclick="srt('st-tbl-el',3)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('st-tbl-el',4)">Paid</th>
+      <th class="num" onclick="srt('st-tbl-el',5)">Conv%</th>
+      <th class="num" onclick="srt('st-tbl-el',6)">Churn%</th>
+      <th class="num" onclick="srt('st-tbl-el',7)">Avg Days</th>
+      <th class="num" onclick="srt('st-tbl-el',8)">Shopify</th>
+      <th class="num" onclick="srt('st-tbl-el',9)">Etsy</th>
+      <th class="num" onclick="srt('st-tbl-el',10)">Woo</th>
+      <th class="num" onclick="srt('st-tbl-el',11)">Other</th>
+    </tr></thead>
+    <tbody id="st-tbl"></tbody>
+  </table></div></div>
+  <div id="st-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos de Stamps en el rango seleccionado. Cargá el export semanal en el tab <strong>Stamps</strong> del sheet.
+  </div>
+</div>
+
+<!-- TRAFFIC SOURCES -->
+<div class="page" id="page-traffic">
+  <div class="sec"><span class="sec-title">Traffic Sources — Installs by Channel</span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('ts-tbl-el','traffic_sources')">↓ CSV</button></div>
+  </div>
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc"><div class="cc-ttl">Installs por Canal</div><div style="position:relative;height:400px;"><canvas id="c-ts-bar"></canvas></div></div>
+    <div class="cc"><div class="cc-ttl">Distribución %</div><div style="position:relative;height:400px;"><canvas id="c-ts-pie"></canvas></div></div>
+  </div>
+  <div class="sec">Detalle por Canal</div>
+  <div class="cc">
+    <div class="tbl-wrap"><table class="tbl" id="ts-tbl-el">
+      <thead><tr>
+        <th onclick="srt('ts-tbl-el',0)">Canal (source / medium)</th>
+        <th class="num" onclick="srt('ts-tbl-el',1)">Installs</th>
+        <th class="num" onclick="srt('ts-tbl-el',2)">%</th>
+        <th class="num" onclick="srt('ts-tbl-el',3)">Trial</th>
+        <th class="num" onclick="srt('ts-tbl-el',4)">Trial%</th>
+      </tr></thead>
+      <tbody id="ts-tbl"></tbody>
+    </table></div>
+  </div>
+  <div id="ts-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos de BigQuery para el rango seleccionado. Verificá que la API de BigQuery esté habilitada en Apps Script.
+  </div>
+
+  <div class="sec" style="margin-top:8px;">Shopify Keywords
+    <div class="sec-acts">
+      <div class="gran-tog" style="margin-right:8px;">
+        <button class="gran-btn active" id="kw-f-all"     onclick="filterKwTable('all',this)">All</button>
+        <button class="gran-btn"        id="kw-f-organic" onclick="filterKwTable('organic',this)">Organic</button>
+        <button class="gran-btn"        id="kw-f-cpc"     onclick="filterKwTable('cpc',this)">CPC</button>
+      </div>
+      <button class="sec-act" onclick="expTbl('ts-kw-el','shopify_keywords')">↓ CSV</button>
+    </div>
+  </div>
+  <div class="cc">
+    <div class="tbl-wrap"><table class="tbl" id="ts-kw-el">
+      <thead><tr>
+        <th onclick="srt('ts-kw-el',0)">Keyword</th>
+        <th onclick="srt('ts-kw-el',1)">Tipo</th>
+        <th class="num" onclick="srt('ts-kw-el',2)">Installs</th>
+        <th class="num" onclick="srt('ts-kw-el',3)">Trial</th>
+        <th class="num" onclick="srt('ts-kw-el',4)">Trial%</th>
+      </tr></thead>
+      <tbody id="ts-kw-tbl"></tbody>
+    </table></div>
+  </div>
+  <div id="ts-kw-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos de keywords de Shopify en el rango seleccionado.
+  </div>
+</div>
+
+<!-- TRAFFIC KEYWORD DRILL MODAL -->
+<div id="kw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow-y:auto;" onclick="if(event.target===this)closeKwDrill()">
+  <div style="background:var(--surface);border-radius:14px;max-width:680px;margin:60px auto;padding:28px;box-shadow:var(--shadow-lg);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;" id="kw-modal-title">—</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:3px;" id="kw-modal-sub">—</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="sec-act" onclick="expKwDrill()">↓ CSV</button>
+        <button class="drill-close" onclick="closeKwDrill()">✕</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl" id="kw-drill-tbl">
+      <thead><tr><th onclick="srt('kw-drill-tbl',0)">Store (shop_url)</th></tr></thead>
+      <tbody id="kw-drill-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- DRILL-DOWN MODAL -->
+<div id="drill-modal" onclick="if(event.target===this)closeDrill()">
+  <div class="drill-box">
+    <div class="drill-hdr">
+      <div class="drill-title">
+        <span class="drill-stamp-tag" id="drill-stamp-tag">—</span>
+        <span class="drill-metric-tag" id="drill-metric-tag">—</span>
+        <span id="drill-count-tag" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-3);">—</span>
+      </div>
+      <div class="drill-hdr-acts">
+        <button class="drill-exp-btn" onclick="expDrill()">↓ CSV</button>
+        <button class="drill-close" onclick="closeDrill()">✕</button>
+      </div>
+    </div>
+    <div class="drill-body">
+      <div class="drill-summary" id="drill-summary"></div>
+      <div class="tbl-wrap"><table class="tbl" id="drill-tbl">
+        <thead id="drill-thead"><tr>
+          <th onclick="srt('drill-tbl',0)">Domain</th>
+          <th onclick="srt('drill-tbl',1)">Plataforma</th>
+          <th onclick="srt('drill-tbl',2)">Estado</th>
+          <th onclick="srt('drill-tbl',3)">Canal</th>
+          <th class="num" onclick="srt('drill-tbl',4)">Días Activo</th>
+          <th onclick="srt('drill-tbl',5)">Stamp Install</th>
+        </tr></thead>
+        <tbody id="drill-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<div class="footer" id="footer" style="display:none;">
+  <div>Customily Attribution v9</div>
+  <div class="flinks">
+    <span class="flink" onclick="manualRefresh()">Refresh</span>
+    <span class="flink" onclick="toggleSh()">Shortcuts</span>
+    <span class="flink" onclick="expAll()">Export All</span>
+  </div>
+  <div id="fts">—</div>
+</div>
+<div id="toast"></div>
+<div id="smod">
+  <div class="mbox">
+    <div class="mttl">Keyboard Shortcuts <button class="mcls" onclick="toggleSh()">✕</button></div>
+    <div class="srow"><span class="sdesc">Full Funnel</span><span class="skey">1</span></div>
+    <div class="srow"><span class="sdesc">Paid Merchants</span><span class="skey">2</span></div>
+    <div class="srow"><span class="sdesc">Lost</span><span class="skey">3</span></div>
+    <div class="srow"><span class="sdesc">Google Ads</span><span class="skey">4</span></div>
+    <div class="srow"><span class="sdesc">Retention</span><span class="skey">5</span></div>
+    <div class="srow"><span class="sdesc">Refresh</span><span class="skey">R</span></div>
+    <div class="srow"><span class="sdesc">Cerrar</span><span class="skey">Esc</span></div>
+  </div>
+</div>
+
+<script>
+// ▼ PEGAR ACÁ la URL del deployment (termina en /exec)
+var _EXEC_URL = 'https://script.google.com/macros/s/AKfycbyOYJjE4cmJszNqenpSKoCoRVzvg3vVNwA4RoKdHSPSMKdXR9QAoBrYW1c3Sp5DWcW6bg/exec';
+let _ch={},_data=null,_rat=null,_ri=null,_funnelDetails=[],_paidDetails=[],_stampsTable=[];
+
+// ── THEME — default always light, persist choice ─────────
+const TK='cust-theme';
+function sysDark(){return matchMedia('(prefers-color-scheme:dark)').matches;}
+function applyTheme(t){
+  const res=t==='auto'?sysDark()?'dark':'light':t;
+  document.documentElement.setAttribute('data-theme',res);
+  document.documentElement.setAttribute('data-sel-t',t);
+  localStorage.setItem(TK,t);
+  updChartColors(res);
+}
+function setTheme(t){
+  applyTheme(t);
+  const lbls={light:'Tema claro ☀',dark:'Tema oscuro ◑',auto:'Tema automático ⊙'};
+  toast(lbls[t],'info',1500);
+}
+function updChartColors(res){
+  const dk=res==='dark';
+  Chart.defaults.color=dk?'#4a5070':'#8890b0';
+  const gc=dk?'#1c1f35':'#e2e4ef';
+  Object.values(_ch).forEach(c=>{
+    if(!c?.options) return;
+    if(c.options.scales?.x?.ticks) c.options.scales.x.ticks.color=dk?'#4a5070':'#8890b0';
+    if(c.options.scales?.y){c.options.scales.y.ticks.color=dk?'#4a5070':'#8890b0';c.options.scales.y.grid.color=gc;}
+    if(c.options.plugins?.legend?.labels) c.options.plugins.legend.labels.color=dk?'#4a5070':'#8890b0';
+    try{c.update('none');}catch(e){}
+  });
+}
+// Always default to light — only use stored if user explicitly chose
+(function(){
+  const stored=localStorage.getItem(TK);
+  applyTheme(stored||'light');
+  matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
+    if(document.documentElement.getAttribute('data-sel-t')==='auto') applyTheme('auto');
+  });
+})();
+
+Chart.defaults.font.family="'JetBrains Mono',monospace";
+Chart.defaults.font.size=10;
+const PAL=['#3d6fff','#00d68f','#f59e0b','#ff4363','#9b5de5','#00b4d8','#f97316','#ec4899','#6366f1','#14b8a6'];
+function gc(){
+  const dk=document.documentElement.getAttribute('data-theme')==='dark';
+  return{muted:dk?'#4a5070':'#8890b0',grid:dk?'#1c1f35':'#e2e4ef'};
+}
+
+// ── DYNAMIC MAX ──────────────────────────────────────────
+function dynMax(arr, gap){
+  if(!arr||!arr.length) return 10;
+  const mx=Math.max(...arr.map(v=>parseFloat(v)||0));
+  const g=gap!==undefined?gap:5;
+  return Math.ceil((mx+g)/5)*5||10;
+}
+
+// ── MONTH PICKER ─────────────────────────────────────────
+const MNS=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const _mp={
+  from:{year:2025,month:0,viewYear:2025},
+  to:  {year:2026,month:3,viewYear:2026}
+};
+function mpFmt(s){return MNS[_mp[s].month]+' '+_mp[s].year;}
+function mpDateStr(s,end){
+  const{year,month}=_mp[s];
+  if(!end) return `${year}-${String(month+1).padStart(2,'0')}-01`;
+  const last=new Date(year,month+1,0).getDate();
+  return `${year}-${String(month+1).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+}
+function mpToggle(s){
+  const other=s==='from'?'to':'from';
+  document.getElementById('mp-'+other+'-panel').classList.remove('open');
+  document.getElementById('mp-'+other+'-toggle').classList.remove('open');
+  const panel=document.getElementById('mp-'+s+'-panel');
+  const tog=document.getElementById('mp-'+s+'-toggle');
+  const wasOpen=panel.classList.contains('open');
+  panel.classList.toggle('open',!wasOpen);
+  tog.classList.toggle('open',!wasOpen);
+  if(!wasOpen) mpRenderGrid(s);
+}
+function mpNav(s,dir){
+  _mp[s].viewYear+=dir;
+  document.getElementById('mp-'+s+'-yr').textContent=_mp[s].viewYear;
+  mpRenderGrid(s);
+}
+function mpRenderGrid(s){
+  const vy=_mp[s].viewYear;
+  const now=new Date();
+  const other=s==='from'?_mp.to:_mp.from;
+  const el=document.getElementById('mp-'+s+'-months');
+  el.innerHTML=MNS.map((m,mi)=>{
+    const isSel=vy===_mp[s].year&&mi===_mp[s].month;
+    const isFut=vy>now.getFullYear()||(vy===now.getFullYear()&&mi>now.getMonth());
+    const isAfterTo=s==='from'&&(vy>other.year||(vy===other.year&&mi>other.month));
+    const isBeforeFrom=s==='to'&&(vy<other.year||(vy===other.year&&mi<other.month));
+    const dis=isFut||isAfterTo||isBeforeFrom;
+    return `<button class="mp-m${isSel?' mp-sel':''}${dis?' mp-dis':''}" onclick="${dis?'':'mpPick(\''+s+'\','+vy+','+mi+')'}">${m}</button>`;
+  }).join('');
+  document.getElementById('mp-'+s+'-yr').textContent=vy;
+}
+function mpPick(s,year,month){
+  _mp[s].year=year;_mp[s].month=month;_mp[s].viewYear=year;
+  document.getElementById('mp-'+s+'-lbl').textContent=mpFmt(s);
+  document.getElementById('mp-'+s+'-panel').classList.remove('open');
+  document.getElementById('mp-'+s+'-toggle').classList.remove('open');
+  document.getElementById('cr-display').textContent=mpFmt('from')+' → '+mpFmt('to');
+}
+// Init display
+const _crDisp=document.getElementById('cr-display');
+if(_crDisp) _crDisp.textContent='Rango personalizado';
+// Close picker when clicking outside
+document.addEventListener('click',e=>{
+  ['from','to'].forEach(s=>{
+    const wrap=document.getElementById('mp-'+s+'-toggle')?.closest('.cr-row');
+    if(wrap&&!wrap.contains(e.target)){
+      document.getElementById('mp-'+s+'-panel').classList.remove('open');
+      document.getElementById('mp-'+s+'-toggle').classList.remove('open');
     }
   });
+});
 
-  // ---- LOAD ATTRIBUTION (solo filas del rango, max 5000) ----
-  const attrSheet = ss.getSheetByName('Attribution');
-  const attrRaw   = attrSheet.getDataRange().getValues().slice(1);
+// ── UTILS ────────────────────────────────────────────────
+function toast(msg,type='info',dur=2400){
+  const el=document.createElement('div');
+  el.className='tst '+type;el.textContent=msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(6px)';el.style.transition='all .2s';setTimeout(()=>el.remove(),220);},dur);
+}
+function cv(el){
+  const v=el.textContent.replace(/[^0-9.%$,]/g,'').trim();if(!v)return;
+  navigator.clipboard.writeText(v).then(()=>toast('Copiado: '+v,'success')).catch(()=>{});
+}
+function toggleSh(){document.getElementById('smod').classList.toggle('show');}
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  const ts=['funnel','paid','lost','ads','retention','stamps','traffic'];
+  if(e.key>='1'&&e.key<='7')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
+  if(e.key==='r'||e.key==='R') manualRefresh();
+  if(e.key==='Escape') document.getElementById('smod').classList.remove('show');
+});
+window.addEventListener('scroll',()=>{document.getElementById('hdr').classList.toggle('scrolled',scrollY>4);},{passive:true});
 
-  const attrFiltered = attrRaw.filter(r => {
-    const d = new Date(r[3]);
-    return !isNaN(d) && d >= fromDate && d <= toDate;
-  });
-
-  const allRows = attrFiltered.map(r => {
-    const installDate    = r[3];
-    const installDateStr = installDate ? String(installDate).substring(0, 10) : '';
-    const firstPayDate   = r[15] ? String(r[15]).substring(0, 10) : '';
-    const activationDate = r[17] ? String(r[17]).substring(0, 10) : '';
-
-    const paidAfterInstall      = firstPayDate   && installDateStr && firstPayDate   >= installDateStr;
-    const activatedAfterInstall = activationDate && installDateStr && activationDate >= installDateStr;
-
-    return {
-      domain:         String(r[0]  || ''),
-      shopName:       String(r[1]  || ''),
-      installDate:    installDate,
-      uninstallDate:  r[4],
-      status:         String(r[5]  || ''),
-      daysActive:     Number(r[6]) || 0,
-      channel:        String(r[7]  || 'Other'),
-      campaign:       String(r[8]  || ''),
-      sourceMedium:   String(r[9]  || ''),
-      keyword:        String(r[10] || ''),
-      utmContent:     String(r[11] || ''),
-      surfaceType:    String(r[12] || ''),
-      country:        String(r[14] || ''),
-      paid:           paidAfterInstall ? true : false,
-      firstPayDate:   firstPayDate,
-      firstPayAmt:    Number(r[16]) || 0,
-      activated:      activatedAfterInstall ? true : false,
-      activationDate: activationDate,
-      stampAttr:      String(r[18] || '')
-    };
-  });
-
-  const paidRows      = allRows.filter(r => r.paid);
-  const activatedRows = allRows.filter(r => r.activated);
-  const lostRows      = allRows.filter(r => !r.paid);
-
-  // ---- LOAD GOOGLE ADS ----
-  const adsSheet = ss.getSheetByName('GoogleAds');
-  const adsRows  = adsSheet ? adsSheet.getDataRange().getValues().slice(1)
-    .filter(r => {
-      let month = '';
-      if (r[4] instanceof Date) {
-        month = r[4].getFullYear() + '-' + String(r[4].getMonth()+1).padStart(2,'0');
-      } else {
-        month = String(r[4] || '').trim().slice(0, 7);
-      }
-      if (!month || month.length < 7) return true;
-      return month >= fromMonth && month <= toMonth;
-    })
-    .map(r => ({
-      campaign:     String(r[0] || ''),
-      adGroup:      String(r[1] || ''),
-      keyword:      String(r[2] || '').toLowerCase().trim(),
-      impressions:  Number(r[5]) || 0,
-      clicks:       Number(r[6]) || 0,
-      cost:         Number(r[7]) || 0,
-      conversions:  Number(r[8]) || 0
-    })) : [];
-
-  // ---- LOAD GA4 SURFACE ----
-  const surfSheet   = ss.getSheetByName('GA4_Surface_Type');
-  const surfRows    = surfSheet   ? surfSheet.getDataRange().getValues().slice(1)   : [];
-  const surfKwSheet = ss.getSheetByName('GA4_Surface_Keywords');
-  const surfKwRows  = surfKwSheet ? surfKwSheet.getDataRange().getValues().slice(1) : [];
-
-  function normCampaign(name) {
-    return String(name || '')
-      .replace(/^Ad\d+\s+/i, '')
-      .replace(/\s+Ad\d+$/i, '')
-      .trim();
+// ── PRESETS & RELOAD ─────────────────────────────────────
+function setPreset(p,btn){
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const cw=document.getElementById('crw');cw.classList.remove('show');
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const t=new Date();let from;
+  if(p==='7d'){from=new Date(t);from.setDate(from.getDate()-7);}
+  else if(p==='30d'){from=new Date(t);from.setDate(from.getDate()-30);}
+  else if(p==='mtd'){from=new Date(t.getFullYear(),t.getMonth(),1);}
+  else if(p==='ytd'){from=new Date(t.getFullYear(),0,1);}
+  else{
+    cw.classList.add('show');
+    const today=new Date().toISOString().split('T')[0];
+    const toEl=document.getElementById('dt-to');
+    if(toEl&&!toEl.value) toEl.value=today;
+    return;
   }
+  reload(fmt(from),fmt(t));
+}
+function applyCustom(){
+  document.getElementById('cr-pop').classList.remove('show');
+  const from=document.getElementById('dt-from').value;
+  const to=document.getElementById('dt-to').value||new Date().toISOString().split('T')[0];
+  if(!from){alert('Seleccioná una fecha de inicio');return;}
+  reload(from,to);
+}
+function reload(from,to){
+  destroyAll();clearBodies();
+  _stampsTable=[];
+  const si=document.getElementById('st-search');if(si)si.value='';
+  ['c-wk-all','c-wk-paid','c-p-ch','c-p-co','c-p-churn','c-p-avgd','c-p-stamp','c-p-stamp-conv','c-l-ch','c-l-ttc','c-l-co','c-l-rsn','c-r-ttc','c-r-ttcp','c-r-rsn','c-r-ch','c-srf','c-skw','c-st-mon','c-st-top','c-st-plat'].forEach(freshCanvas);
+  document.getElementById('loading').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('footer').style.display='none';
+  document.getElementById('alerts-bar').style.display='none';
+  let url=_EXEC_URL+'?json=1&_t='+Date.now();
+  if(from) url+='&from='+encodeURIComponent(from);
+  if(to)   url+='&to='+encodeURIComponent(to);
+  fetch(url,{redirect:'follow',cache:'no-store'}).then(r=>r.json()).then(render).catch(err=>onError(String(err)));
+}
+function manualRefresh(){
+  const b=document.getElementById('rfbtn');b.classList.add('loading');
+  setTimeout(()=>b.classList.remove('loading'),1200);
+  const a=document.querySelector('.preset-btn.active');if(a)a.click();
+}
+function destroyAll(){Object.values(_ch).forEach(c=>{try{c.destroy();}catch(e){}});_ch={};}
+function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
+function freshCanvas(id){
+  const o=document.getElementById(id);if(!o) return null;
+  const n=document.createElement('canvas');n.id=id;
+  o.parentNode.replaceChild(n,o);return n;
+}
 
-  function isInvalid(v) {
-    const l = String(v||'').toLowerCase().trim();
-    return !l || l==='(not set)'||l==='(not provided)'||l==='not set'||l==='(organic)';
-  }
+// ── GRANULARITY ──────────────────────────────────────────
+function aggMo(bw){
+  const m={};
+  bw.forEach(r=>{const k=(String(r.label).match(/(\d{4}[-\/]\d{2})/)||[,'?'])[1].replace('/','-');m[k]=(m[k]||0)+Number(r.value);});
+  return Object.entries(m).map(([label,value])=>({label,value}));
+}
+function setGran(s,g,btn){
+  btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(!_data) return;
+  const id=s==='all'?'c-wk-all':'c-wk-paid';
+  const dk=s==='all'?'funnel':'paid';
+  const col=s==='all'?'#3d6fff':'#00d68f';
+  const bw=_data[dk].byWeek||[];
+  const td=g==='daily'?(_data[dk].byDay||bw):g==='weekly'?bw:(_data[dk].byMonth||aggMo(bw));
+  if(_ch[id]){_ch[id].destroy();delete _ch[id];}
+  freshCanvas(id);
+  _ch[id]=mkLine(id,td.map(r=>r.label),td.map(r=>r.value),col);
+}
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  scrollTo({top:0,behavior:'smooth'});
+}
 
-  function groupCount(rows, field, top) {
-    const c={};
-    rows.forEach(r=>{ const k=r[field]||''; if(!isInvalid(k)) c[k]=(c[k]||0)+1; });
-    const res=Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v}));
-    return top ? res.slice(0,top) : res;
-  }
+// ── TABLE SORT & EXPORT ──────────────────────────────────
+const _sst={};
+function srt(tid,col){
+  const tbl=document.getElementById(tid);if(!tbl) return;
+  const k=tid+'-'+col;_sst[k]=_sst[k]==='asc'?'desc':'asc';
+  const dir=_sst[k];
+  tbl.querySelectorAll('th').forEach((th,i)=>{th.classList.remove('sorted','s-asc','s-desc');if(i===col)th.classList.add('sorted','s-'+dir);});
+  const tb=tbl.querySelector('tbody');
+  [...tb.querySelectorAll('tr')].sort((a,b)=>{
+    const av=a.cells[col]?.textContent.replace(/[$%,]/g,'').trim()||'';
+    const bv=b.cells[col]?.textContent.replace(/[$%,]/g,'').trim()||'';
+    const an=parseFloat(av),bn=parseFloat(bv);
+    const c=(!isNaN(an)&&!isNaN(bn))?(an-bn):av.localeCompare(bv);
+    return dir==='asc'?c:-c;
+  }).forEach(r=>tb.appendChild(r));
+}
+function expTbl(tbid,name){
+  const tb=document.getElementById(tbid);if(!tb) return;
+  const th=tb.closest('table').querySelector('thead');
+  const heads=th?[...th.querySelectorAll('th')].map(h=>h.textContent.replace(/[↑↓]/g,'').trim()):[];
+  const rows=[...tb.querySelectorAll('tr')].map(tr=>[...tr.cells].map(td=>td.textContent.trim()));
+  const csv=[heads,...rows].map(r=>r.map(v=>`"${v.replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`customily-${name}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();toast('Exportado: '+name+'.csv','success');
+}
+function expAll(){[['ch-tbody','channels'],['co-tbody','countries'],['kw-tbody','keywords'],['a-camp','campaigns'],['a-kw','kw-ads']].forEach(([i,n])=>expTbl(i,n));}
 
-  function convRate(total, paid) {
-    return total > 0 ? ((paid/total)*100).toFixed(1) : '0.0';
-  }
+// ── ALERTS & INSIGHTS ────────────────────────────────────
+function buildAlerts(d){
+  const dr=parseFloat(d.funnel.churnRate||0),cv2=parseFloat(d.funnel.conversionRate||0),cpa=parseFloat(d.ads.overallCPA||0);
+  const als=[];
+  if(dr>60) als.push({t:'danger',m:`Drop rate crítico: ${dr}%`});
+  else if(dr>40) als.push({t:'warn',m:`Drop rate elevado: ${dr}%`});
+  else als.push({t:'ok',m:`Drop rate: ${dr}%`});
+  if(cv2<5) als.push({t:'danger',m:`Conversión baja: ${cv2}%`});
+  else if(cv2<15) als.push({t:'warn',m:`Conversión: ${cv2}%`});
+  if(cpa>0&&cpa>=50) als.push({t:'warn',m:`CPA alto: $${cpa}`});
+  document.getElementById('al-inner').innerHTML='<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-3);margin-right:6px;">ALERTAS:</span>'+als.map(a=>`<span class="al-pill ${a.t}"><span class="al-dot"></span>${a.m}</span>`).join('');
+  document.getElementById('alerts-bar').style.display='block';
+}
 
-  function churnByDim(rows, field) {
-    const totals={}, churned={};
-    rows.forEach(r=>{
-      const k=r[field]||''; if(isInvalid(k)) return;
-      totals[k]=(totals[k]||0)+1;
-      if(r.status==='Churned') churned[k]=(churned[k]||0)+1;
-    });
-    return Object.entries(totals).map(([l,t])=>({label:l,value:(((churned[l]||0)/t)*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
-  }
+function insCard(t,i,n,b){return`<div class="ins ${t}"><div class="ins-ico">${i}</div><div class="ins-ttl">${n}</div><div class="ins-bod">${b}</div></div>`;}
 
-  function avgDaysByDim(rows, field) {
-    const sums={}, counts={};
-    rows.forEach(r=>{
-      const k=r[field]||''; if(isInvalid(k)) return;
-      sums[k]=(sums[k]||0)+r.daysActive; counts[k]=(counts[k]||0)+1;
-    });
-    return Object.entries(sums).map(([l,s])=>({label:l,value:(s/counts[l]).toFixed(1)})).sort((a,b)=>b.value-a.value);
-  }
+function buildInsights(d){
+  const cv2=parseFloat(d.funnel.conversionRate||0),dr=parseFloat(d.funnel.churnRate||0),q=parseFloat(d.funnel.quality?.moreThan1h||0);
+  document.getElementById('ins-panel').innerHTML=[
+    insCard(cv2>20?'ok':cv2>10?'warn':'danger',cv2>20?'✓':'⚠',`Conversión: ${cv2}%`,cv2>20?'Buen rendimiento. Seguir nutriendo leads.':cv2>10?'Debajo del objetivo. Revisar onboarding.':'Atención. Verificar pricing y trial UX.'),
+    insCard(dr>60?'danger':dr>35?'warn':'ok',dr>60?'↓':dr>35?'~':'✓',`Drop rate: ${dr}%`,dr>60?'Drop rate crítico. Investigar causas.':dr>35?'Elevado. Considerar retención proactiva.':'Retención saludable en este período.'),
+    insCard(q>70?'ok':q>50?'warn':'danger','⏱',`Survival 1h: ${q}%`,q>70?'Mayoría pasa la primera hora.':q>50?'Salidas rápidas. Revisar first-run.':'Alta tasa de rebote. Revisar landing.')
+  ].join('');
+}
 
-  function convByDim(allR, paidR, field, top) {
-    const totals={}, paidMap={}, actMap={};
-    allR.forEach(r=>{ const k=r[field]||''; if(!isInvalid(k)) totals[k]=(totals[k]||0)+1; });
-    paidR.forEach(r=>{ const k=r[field]||''; if(!isInvalid(k)) paidMap[k]=(paidMap[k]||0)+1; });
-    activatedRows.forEach(r=>{ const k=r[field]||''; if(!isInvalid(k)) actMap[k]=(actMap[k]||0)+1; });
-    const res = Object.entries(totals).map(([l,t])=>({
-      label:l, installs:t,
-      activated: actMap[l]||0,
-      activationRate: convRate(t, actMap[l]||0),
-      paid:paidMap[l]||0,
-      convRate: convRate(t, paidMap[l]||0)
-    })).sort((a,b)=>b.installs-a.installs);
-    return top ? res.slice(0,top) : res;
-  }
+function buildInsightsPaid(p){
+  const cr=parseFloat(p.churnRate||0),rev=Number(p.totalRevenue||0),days=parseFloat(p.avgDays||0);
+  const topCh=(p.byChannel||[]).filter(r=>r.value>0)[0];
+  const bestRet=(p.avgDaysByChannel||[]).filter(r=>parseFloat(r.value)>0)[0];
+  document.getElementById('ins-paid').innerHTML=[
+    insCard(cr<20?'ok':cr<40?'warn':'danger','💳',`Churn paid: ${cr}%`,cr<20?'Retención saludable entre merchants pagos.':cr<40?'Churn moderado. Considerar check-ins de éxito.':'Alto churn post-pago. Revisar propuesta de valor.'),
+    insCard('ok','📊',`Avg días activos: ${days}d`,`Merchants pagos permanecen activos ${days} días en promedio. ${days>180?'Excelente engagement.':days>60?'Buena retención.':'Oportunidad de mejorar retención.'}`),
+    topCh?insCard('ok','🏆',`Top canal: ${topCh.label}`,`${topCh.value.toLocaleString()} paid merchants originados desde ${topCh.label}.`):insCard('warn','📭','Sin datos de canal','No hay suficiente data de canal en este período.')
+  ].join('');
+}
 
-  function installsByDay(rows) {
-    const days={};
-    rows.forEach(r=>{
-      const d=new Date(r.installDate); if(isNaN(d)) return;
-      const key=d.toISOString().split('T')[0];
-      days[key]=(days[key]||0)+1;
-    });
-    return Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
-  }
+function buildInsightsLost(l){
+  const tot=l.total||1;
+  const bouncePct=((l.immediate/tot)*100).toFixed(1);
+  const topRsn=(l.reasons||[])[0];
+  const topChCh=(l.churnByChannel||[]).filter(r=>parseFloat(r.value)>0)[0];
+  document.getElementById('ins-lost').innerHTML=[
+    insCard(parseFloat(bouncePct)>30?'danger':'warn','⚡',`Bounce inmediato: ${bouncePct}%`,`${l.immediate.toLocaleString()} installs (${bouncePct}%) desinstalaron el mismo día. ${parseFloat(bouncePct)>30?'Revisar first-run experience urgente.':'Considerar mejoras en onboarding inicial.'}`),
+    topRsn?insCard('warn','📋',`Top razón: ${topRsn.label}`,`${topRsn.value.toLocaleString()} uninstalls por "${topRsn.label}". ${(l.reasons||[]).length>1?'Otras razones: '+(l.reasons||[]).slice(1,3).map(r=>r.label).join(', ')+'.':''}`):insCard('ok','✓','Sin razones frecuentes','No hay razones dominantes de uninstall en este período.'),
+    topChCh?insCard('warn','📉',`Mayor churn: ${topChCh.label}`,`Canal "${topChCh.label}" tiene ${topChCh.value}% de churn rate. Revisar calidad del tráfico o mensajes de ese canal.`):insCard('ok','✓','Churn por canal equilibrado','No hay un canal con churn significativamente más alto.')
+  ].join('');
+}
 
-  function installsByWeek(rows) {
-    const weeks={};
-    rows.forEach(r=>{
-      const d=new Date(r.installDate); if(isNaN(d)) return;
-      const day=d.getDay();
-      const diff=d.getDate()-day+(day===0?-6:1);
-      const mon=new Date(d.getFullYear(),d.getMonth(),diff);
-      const key=mon.toISOString().split('T')[0];
-      weeks[key]=(weeks[key]||0)+1;
-    });
-    return Object.entries(weeks).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
-  }
+function buildInsightsAds(a){
+  const cpi=parseFloat(a.overallCPI||0),cpa=parseFloat(a.overallCPA||0),ctr=parseFloat(a.overallCTR||0);
+  const topCamp=(a.campaignTable||[]).filter(r=>r.installs>5).sort((x,y)=>parseFloat(y.convRate)-parseFloat(x.convRate))[0];
+  const topKw=(a.keywordTable||[])[0];
+  document.getElementById('ins-ads').innerHTML=[
+    insCard(cpi>0&&cpi<5?'ok':cpi<15?'warn':'danger','💰',`CPI: $${a.overallCPI}`,cpi<5?'CPI excelente — muy eficiente.':cpi<15?'CPI razonable para Shopify apps.':cpi>0?'CPI alto — optimizar pujas o segmentación.':'Sin datos suficientes de installs atribuidos.'),
+    topCamp?insCard('ok','🥇',`Mejor campaña: ${topCamp.campaign.slice(0,30)}`,`${topCamp.installs} installs, ${topCamp.paid} paid merchants, ${topCamp.convRate}% conv. rate. CPI: $${topCamp.cpi}.`):insCard('warn','📊','Sin campañas con installs','Verificar atribución CPC en el período seleccionado.'),
+    topKw?insCard('ok','🔑',`Top keyword: "${topKw.keyword}"`,`$${Number(topKw.spend).toLocaleString()} invertidos, ${topKw.installs} installs, ${topKw.paid} paid merchants. ${topKw.cpa==='N/A'?'Sin conversiones atribuidas.':'CPA: $'+topKw.cpa+'.'}`):insCard('warn','🔍','Sin keywords con datos','No hay keywords con spend en este período.')
+  ].join('');
+}
 
-  function installsByMonth(rows) {
-    const months={};
-    rows.forEach(r=>{
-      const d=new Date(r.installDate); if(isNaN(d)) return;
-      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      months[key]=(months[key]||0)+1;
-    });
-    return Object.entries(months).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
-  }
+function startTimer(){
+  clearInterval(_ri);_rat=Date.now();
+  const u=()=>{const s=Math.floor((Date.now()-_rat)/1000);const e=document.getElementById('last-upd');if(e)e.innerHTML='<span class="live-dot"></span>'+(s<60?`Actualizado ${s}s`:s<3600?`Hace ${Math.floor(s/60)}m`:`Hace ${Math.floor(s/3600)}h`);};
+  u();_ri=setInterval(u,20000);
+}
 
-  function churnBuckets(rows) {
-    const churned = rows.filter(r=>r.status==='Churned'&&r.daysActive>=0);
-    return {
-      'Menos de 1h':  churned.filter(r=>r.daysActive===0).length,
-      '1 a 7 dias':   churned.filter(r=>r.daysActive>=1&&r.daysActive<=7).length,
-      '8 a 30 dias':  churned.filter(r=>r.daysActive>=8&&r.daysActive<=30).length,
-      '31 a 90 dias': churned.filter(r=>r.daysActive>=31&&r.daysActive<=90).length,
-      'Mas de 90d':   churned.filter(r=>r.daysActive>90).length
-    };
-  }
+// ── CHART FACTORIES ──────────────────────────────────────
+function _destroyChart(id){if(_ch[id]){try{_ch[id].destroy();}catch(e){}delete _ch[id];}}
+function mkLine(id,labels,vals,color){
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  const{muted,grid}=gc();
+  const c=new Chart(document.getElementById(id),{type:'line',data:{labels,datasets:[{data:vals,borderColor:color,backgroundColor:'transparent',borderWidth:2,fill:false,tension:.4,pointRadius:3,pointBackgroundColor:color,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:10}},y:{grid:{color:grid},ticks:{color:muted,precision:0,stepSize:1}}}}});
+  _ch[id]=c;return c;
+}
+function mkHBar(id,labels,vals,color,opts){
+  const inv=['(not set)','(not provided)','','not set','not provided'];
+  const f=labels.map((l,i)=>({l,v:vals[i]})).filter(d=>!inv.includes(String(d.l).toLowerCase().trim()));
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  if(!f.length) return null;
+  const{muted,grid}=gc();
+  const c=new Chart(document.getElementById(id),{type:'bar',data:{labels:f.map(d=>d.l),datasets:[{data:f.map(d=>d.v),backgroundColor:color,borderRadius:3,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:grid},ticks:{color:muted},min:opts?.min,max:opts?.max},y:{grid:{display:false},ticks:{color:muted}}}}});
+  _ch[id]=c;return c;
+}
+function mkVBar(id,labels,vals,color){
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  const{muted,grid}=gc();
+  const c=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:color,borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted}},y:{grid:{color:grid},ticks:{color:muted}}}}});
+  _ch[id]=c;return c;
+}
+function mkDo(id,labels,vals){
+  const inv=['(not set)','(not provided)','','not set','not provided'];
+  const f=labels.map((l,i)=>({l,v:vals[i]})).filter(d=>!inv.includes(String(d.l).toLowerCase().trim()));
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  if(!f.length) return null;
+  const{muted}=gc();
+  const c=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:f.map(d=>d.l),datasets:[{data:f.map(d=>d.v),backgroundColor:PAL,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:muted,boxWidth:8,padding:10}}}}});
+  _ch[id]=c;return c;
+}
 
-  const totalInstalls    = allRows.length;
-  const uniqueShops      = allRows.length;
-  const totalActivated   = activatedRows.length;
-  const totalPaid        = paidRows.length;
-  const uniquePaidShops  = paidRows.length;
-  const totalChurned     = allRows.filter(r=>r.status==='Churned').length;
-  const totalActive      = allRows.filter(r=>r.status==='Active').length;
-  const churnRate        = convRate(totalInstalls, totalChurned);
-  const conversionRate   = convRate(totalInstalls, totalPaid);
-  const activationRate   = convRate(totalInstalls, totalActivated);
-  const avgDaysAll       = allRows.length>0 ? (allRows.reduce((s,r)=>s+r.daysActive,0)/allRows.length).toFixed(1) : 0;
+// ── PILL HELPERS ─────────────────────────────────────────
+function npill(v){if(v==='N/A')return'<span class="pill p-m">N/A</span>';const n=parseFloat(v);if(isNaN(n))return v;return`<span class="pill ${n<5?'p-g':n<20?'p-y':'p-r'}">$${v}</span>`;}
+function cpill(v){const n=parseFloat(v);return`<span class="pill ${n>=30?'p-g':n>=10?'p-y':'p-r'}">${v}%</span>`;}
+function chpill(v){const n=parseFloat(v);return`<span class="pill ${n<30?'p-g':n<60?'p-y':'p-r'}">${v}%</span>`;}
 
-  const quality = {
-    moreThan1h:  ((allRows.filter(r=>r.daysActive>0).length/(allRows.length||1))*100).toFixed(1),
-    moreThan7d:  ((allRows.filter(r=>r.daysActive>=7).length/(allRows.length||1))*100).toFixed(1),
-    moreThan30d: ((allRows.filter(r=>r.daysActive>=30).length/(allRows.length||1))*100).toFixed(1)
-  };
-
-  const paidActive    = paidRows.filter(r=>r.status==='Active').length;
-  const paidChurned   = paidRows.filter(r=>r.status==='Churned').length;
-  const paidChurnRate = convRate(paidRows.length, paidChurned);
-  const avgDaysPaid   = paidRows.length>0 ? (paidRows.reduce((s,r)=>s+r.daysActive,0)/paidRows.length).toFixed(1) : 0;
-  const totalRevenue  = paidRows.reduce((s,r)=>s+r.firstPayAmt,0).toFixed(2);
-
-  const lostTotal     = lostRows.length;
-  const lostImmediate = lostRows.filter(r=>r.daysActive===0).length;
-  const lostShortTerm = lostRows.filter(r=>r.daysActive>=1&&r.daysActive<=7).length;
-  const lostLongTerm  = lostRows.filter(r=>r.daysActive>7).length;
-
-  const shopifyAdsRows = adsRows.filter(r=>String(r.campaign).toLowerCase().includes('shopify'));
-  const totalAdSpend  = shopifyAdsRows.reduce((s,r)=>s+r.cost,0);
-  const totalAdClicks = shopifyAdsRows.reduce((s,r)=>s+r.clicks,0);
-  const totalAdImpr   = shopifyAdsRows.reduce((s,r)=>s+r.impressions,0);
-  const avgCPC        = totalAdClicks>0 ? (totalAdSpend/totalAdClicks).toFixed(2) : 0;
-  const overallCTR    = totalAdImpr>0   ? ((totalAdClicks/totalAdImpr)*100).toFixed(2) : 0;
-
-  const paidInstalls    = allRows.filter(r=>
-    String(r.sourceMedium).toLowerCase().includes('cpc') &&
-    String(r.campaign).toLowerCase().includes('shopify')
-  );
-  const paidInstallPaid = paidInstalls.filter(r=>r.paid);
-  const overallCPI      = paidInstalls.length>0&&totalAdSpend>0 ? (totalAdSpend/paidInstalls.length).toFixed(2) : 'N/A';
-  const overallCPA      = paidInstallPaid.length>0&&totalAdSpend>0 ? (totalAdSpend/paidInstallPaid.length).toFixed(2) : 'N/A';
-
-  const adsByCampaign={};
-  adsRows.forEach(r=>{
-    const c=normCampaign(r.campaign);
-    if(!adsByCampaign[c]) adsByCampaign[c]={spend:0,clicks:0,impressions:0,conversions:0};
-    adsByCampaign[c].spend+=r.cost;
-    adsByCampaign[c].clicks+=r.clicks;
-    adsByCampaign[c].impressions+=r.impressions;
-    adsByCampaign[c].conversions+=r.conversions;
-  });
-
-  const attrByCampaign={};
-  allRows.filter(r=>String(r.sourceMedium).toLowerCase().includes('cpc')).forEach(r=>{
-    const k=normCampaign(r.campaign); if(isInvalid(k)) return;
-    if(!attrByCampaign[k]) attrByCampaign[k]={installs:0,activated:0,paid:0,daysSum:0,churned:0};
-    attrByCampaign[k].installs++;
-    if(r.activated) attrByCampaign[k].activated++;
-    if(r.paid) attrByCampaign[k].paid++;
-    if(r.status==='Churned') attrByCampaign[k].churned++;
-    attrByCampaign[k].daysSum+=r.daysActive;
-  });
-
-  const allCampaigns = Object.keys(adsByCampaign)
-    .filter(c=>String(c).toLowerCase().includes('shopify'));
-  const campaignTable=Array.from(allCampaigns).map(c=>{
-    const ads=adsByCampaign[c]||{spend:0,clicks:0,impressions:0,conversions:0};
-    const attr=attrByCampaign[c]||{installs:0,activated:0,paid:0,daysSum:0,churned:0};
-    const gaConversions=Math.round(ads.conversions);
-    return {
-      campaign:c, spend:ads.spend.toFixed(2), clicks:ads.clicks,
-      impressions:ads.impressions,
-      ctr: ads.impressions>0?((ads.clicks/ads.impressions)*100).toFixed(2):'0.00',
-      installs:gaConversions, trial:attr.activated, paid:attr.paid,
-      cpi: gaConversions>0&&ads.spend>0?(ads.spend/gaConversions).toFixed(2):'N/A',
-      cpa: attr.paid>0&&ads.spend>0?(ads.spend/attr.paid).toFixed(2):'N/A',
-      convRate: convRate(gaConversions,attr.paid),
-      churn: attr.installs>0?((attr.churned/attr.installs)*100).toFixed(1):'0.0',
-      avgDays: attr.installs>0?(attr.daysSum/attr.installs).toFixed(1):'0.0'
-    };
-  }).sort((a,b)=>Number(b.spend)-Number(a.spend));
-
-  const adsByKw={}, attrByKw={};
-  adsRows.forEach(r=>{
-    if(isInvalid(r.keyword)) return;
-    const nc=normCampaign(r.campaign);
-    if(!adsByKw[r.keyword]) adsByKw[r.keyword]={spend:0,clicks:0,campaign:nc};
-    adsByKw[r.keyword].spend+=r.cost;
-    adsByKw[r.keyword].clicks+=r.clicks;
-    if(r.cost > 0 && r.cost >= adsByKw[r.keyword].spend - r.cost) {
-      adsByKw[r.keyword].campaign = nc;
-    }
-  });
-  allRows.filter(r=>String(r.sourceMedium).toLowerCase().includes('cpc')).forEach(r=>{
-    const k=String(r.keyword||'').toLowerCase().trim(); if(isInvalid(k)) return;
-    if(!attrByKw[k]) attrByKw[k]={installs:0,paid:0,churned:0,daysSum:0};
-    attrByKw[k].installs++;
-    if(r.paid) attrByKw[k].paid++;
-    if(r.status==='Churned') attrByKw[k].churned++;
-    attrByKw[k].daysSum+=r.daysActive;
-  });
-  const allKws=new Set([...Object.keys(adsByKw).filter(k=>adsByKw[k].clicks>0),...Object.keys(attrByKw)]);
-  const keywordTable=Array.from(allKws).map(k=>{
-    const ads=adsByKw[k]||{spend:0,clicks:0,campaign:''};
-    const attr=attrByKw[k]||{installs:0,paid:0,churned:0,daysSum:0};
-    return {
-      keyword:k, campaign:ads.campaign, spend:ads.spend.toFixed(2), clicks:ads.clicks,
-      installs:attr.installs, paid:attr.paid,
-      cpi:attr.installs>0&&ads.spend>0?(ads.spend/attr.installs).toFixed(2):'N/A',
-      cpa:attr.paid>0&&ads.spend>0?(ads.spend/attr.paid).toFixed(2):'N/A',
-      convRate:convRate(attr.installs,attr.paid),
-      churn:attr.installs>0?((attr.churned/attr.installs)*100).toFixed(1):'0.0',
-      avgDays:attr.installs>0?(attr.daysSum/attr.installs).toFixed(1):'0.0'
-    };
-  }).filter(r=>String(r.campaign).toLowerCase().includes('shopify'))
-    .sort((a,b)=>Number(b.spend)-Number(a.spend)).slice(0,25);
-
-  const weeklySpend=Object.entries(adsByCampaign)
-    .map(([l,v])=>({label:l,value:v.spend.toFixed(2)}))
-    .sort((a,b)=>b.value-a.value);
-
-  const surfaceType = surfRows.filter(r=>r[0]&&r[0]!=='(not set)').map(r=>({label:String(r[0]),value:Number(r[1])||0}));
-  const surfaceKw   = surfKwRows.slice(0,20).map(r=>({label:String(r[0]),value:Number(r[1])||0}));
-
-  // ---- TRAFFIC SOURCES — lee de sheet pre-cacheada, filtra por fecha ----
-  const trafficSources = getTrafficSourcesFromSheet(fromDate, toDate);
-
-  function fmtDate(d) {
-    if (!d) return '';
-    try {
-      const dt = (d instanceof Date) ? d : new Date(d);
-      if (isNaN(dt.getTime())) return '';
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, '0');
-      const day = String(dt.getDate()).padStart(2, '0');
-      return y + '-' + m + '-' + day;
-    } catch(e) { return ''; }
-  }
-
-  let funnelDetails = [], paidDetails = [];
-
-  function extractStamp(cookie) {
-    if (!cookie || String(cookie).trim() === '' || String(cookie).trim().toUpperCase() === 'NULL') return null;
-    const parts = String(cookie).trim().split('-').filter(p => p.length > 0);
-    return parts.length > 0 ? parts[parts.length - 1].toLowerCase().trim() : null;
-  }
-
-  const stampsSheet2 = ss.getSheetByName('Stamps') || ss.getSheetByName('Installs');
-  const stampsRaw2   = stampsSheet2 ? stampsSheet2.getDataRange().getValues().slice(1) : [];
-
-  const domainToStamp = {};
-  stampsRaw2.forEach(r => {
-    const domain = String(r[1] || '').toLowerCase().trim();
-    const stamp  = extractStamp(r[14]);
-    if (domain && stamp) domainToStamp[domain] = stamp;
-  });
-
-  const stampRows = stampsRaw2
-    .filter(r => {
-      const d = r[6] ? new Date(r[6]) : null;
-      return d && !isNaN(d) && d >= fromDate && d <= toDate;
-    })
-    .map(r => ({
-      domain:    String(r[1] || '').toLowerCase().trim(),
-      createdAt: r[6],
-      platform:  (String(r[9] || 'shopify').toLowerCase().trim() || 'shopify'),
-      stamp:     extractStamp(r[14])
-    }))
-    .filter(r => r.stamp);
-
-  const stampConv = {};
-  allRows.forEach(r => {
-    const domain = String(r.domain || '').toLowerCase().trim();
-    const stamp  = domainToStamp[domain];
-    if (!stamp) return;
-    if (!stampConv[stamp]) stampConv[stamp] = { paid:0, activated:0, churned:0, daysSum:0 };
-    if (r.paid)               stampConv[stamp].paid++;
-    if (r.activated)          stampConv[stamp].activated++;
-    if (r.status==='Churned') stampConv[stamp].churned++;
-    stampConv[stamp].daysSum += r.daysActive;
-  });
-
-  allRows.forEach(r => {
-    r.stamp = r.stampAttr || domainToStamp[String(r.domain||'').toLowerCase().trim()] || '';
-  });
-
+// ── RENDER ───────────────────────────────────────────────
+function render(data){
+  _data=data;
+  window._tsDrillRows = [];
+  window._kwDrillRows = [];
   try {
-    funnelDetails = allRows.map(r => ({
-      domain:       r.domain,
-      channel:      r.channel,
-      country:      r.country,
-      status:       r.status,
-      daysActive:   r.daysActive,
-      installDate:  fmtDate(r.installDate),
-      paid:         r.paid,
-      activated:    r.activated,
-      stamp:        r.stamp,
-      campaign:     r.campaign,
-      keyword:      r.keyword,
-      sourceMedium: r.sourceMedium,
-      firstPayDate: fmtDate(r.firstPayDate)
-    }));
-    paidDetails = paidRows.map(r => ({
-      domain:       r.domain,
-      channel:      r.channel,
-      country:      r.country,
-      status:       r.status,
-      daysActive:   r.daysActive,
-      installDate:  fmtDate(r.installDate),
-      firstPayDate: fmtDate(r.firstPayDate),
-      stamp:        r.stamp,
-      campaign:     r.campaign,
-      keyword:      r.keyword,
-      sourceMedium: r.sourceMedium
-    }));
-  } catch(detailsErr) {
-    Logger.log('Error building details: ' + detailsErr);
+  const{funnel,paid,lost,ads,surface,stamps}=data;
+
+  // Tab badges
+  document.getElementById('tb0').textContent=funnel.totalInstalls.toLocaleString();
+  document.getElementById('tb1').textContent=paid.total.toLocaleString();
+  document.getElementById('tb2').textContent=lost.immediate+lost.shortTerm;
+  document.getElementById('tb3').textContent='$'+Number(ads.totalSpend).toLocaleString();
+  document.getElementById('tb4').textContent=(parseFloat(funnel.churnRate)||0)+'%';
+  if(stamps) document.getElementById('tb5').textContent=(stamps.total||0).toLocaleString();
+
+  buildAlerts(data);
+  buildInsights(data);
+  buildInsightsPaid(paid);
+  buildInsightsLost(lost);
+  buildInsightsAds(ads);
+
+  // Funnel viz
+  const maxV=funnel.totalInstalls||1; // guard against division by zero
+  document.getElementById('funnel-viz').innerHTML=[
+    {l:'Total Installs',        v:funnel.totalInstalls,  c:'#3d6fff'},
+    {l:'Activated (Trial)',     v:funnel.totalActivated, c:'#0891b2'},
+    {l:'Paid Merchants',        v:funnel.totalPaid,      c:'#00a86b'}
+  ].map(s=>{const p=Math.min((s.v/maxV*100),100).toFixed(1);return`<div class="funnel-row"><div class="funnel-meta"><div class="funnel-lbl">${s.l}</div><div class="funnel-pct" style="color:${s.c}">${s.v===funnel.totalInstalls?'100':p}%</div></div><div class="funnel-track"><div class="funnel-fill" style="width:${p}%;background:${s.c};">${s.v.toLocaleString()}</div></div></div>`;}).join('');
+
+  // KPI cards
+  document.getElementById('f-total').textContent=funnel.totalInstalls.toLocaleString();
+  document.getElementById('f-unique').textContent=`${funnel.uniqueShops.toLocaleString()} unique shops`;
+  document.getElementById('f-paid').textContent=funnel.totalPaid.toLocaleString();
+  document.getElementById('f-conv').textContent=`${funnel.conversionRate}% conversión`;
+  document.getElementById('f-active').textContent=funnel.totalActive.toLocaleString();
+  document.getElementById('f-churned').textContent=funnel.totalChurned.toLocaleString();
+  document.getElementById('f-churnrate').textContent=`${funnel.churnRate}% drop rate`;
+
+  // Quality bars
+  document.getElementById('quality-bars').innerHTML=[{l:'Survive > 1h',k:'moreThan1h'},{l:'Survive > 7d',k:'moreThan7d'},{l:'Survive > 30d',k:'moreThan30d'}].map(q=>`<div class="qual-row"><div class="qual-hd"><span class="qual-nm">${q.l}</span><span class="qual-vl">${funnel.quality[q.k]}%</span></div><div class="qual-trk"><div class="qual-fill" style="width:${funnel.quality[q.k]}%"></div></div></div>`).join('');
+
+  // Installs time
+  _ch['c-wk-all']=mkLine('c-wk-all',funnel.byWeek.map(r=>r.label),funnel.byWeek.map(r=>r.value),'#3d6fff');
+
+  // Channel table
+  const cht=document.getElementById('ch-tbody');
+  funnel.byChannel.forEach(r=>{
+    const tr=document.createElement('tr');
+    const sc=r.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=r.installs>0?`<span class="drill-link" onclick="openChannelDrill('${sc}','installs')">${Number(r.installs).toLocaleString()}</span>`:Number(r.installs).toLocaleString();
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openChannelDrill('${sc}','paid')">${Number(r.paid).toLocaleString()}</span>`:`<span style="color:var(--green)">${Number(r.paid).toLocaleString()}</span>`;
+    tr.innerHTML=`<td>${r.label}</td><td class="num">${instCell}</td><td class="num" style="color:var(--cyan)">${Number(r.activated).toLocaleString()}</td><td class="num">${cpill(r.activationRate)}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td><div class="conv-bar"><div class="conv-fill" style="width:${Math.min(parseFloat(r.convRate),100)}%"></div></div></td>`;
+    cht.appendChild(tr);
+  });
+  document.getElementById('ch-cnt').textContent=funnel.byChannel.length+' canales';
+
+  // Country & keyword tables
+  const cot=document.getElementById('co-tbody');
+  funnel.byCountry.forEach(r=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;cot.appendChild(tr);});
+  const kwt=document.getElementById('kw-tbody');
+  funnel.byKeyword.forEach(r=>{if(!r.label||r.label==='(not set)')return;const tr=document.createElement('tr');tr.innerHTML=`<td>${r.label}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--green)">${Number(r.paid).toLocaleString()}</td><td class="num">${cpill(r.convRate)}</td>`;kwt.appendChild(tr);});
+
+  // Store details for drill-down
+  _funnelDetails = funnel.details || [];
+  _paidDetails   = paid.details   || [];
+
+  // PAID TAB
+  document.getElementById('p-total').textContent=paid.total.toLocaleString();
+  document.getElementById('p-active').textContent=paid.active.toLocaleString();
+  document.getElementById('p-churned').textContent=paid.churned.toLocaleString();
+  document.getElementById('p-cr').textContent=`${paid.churnRate}% churn`;
+  document.getElementById('p-avgd').textContent=paid.avgDays;
+  document.getElementById('p-rev').textContent=`$${Number(paid.totalRevenue).toLocaleString()}`;
+
+  _ch['c-wk-paid']=mkLine('c-wk-paid',paid.byWeek.map(r=>r.label),paid.byWeek.map(r=>r.value),'#00a86b');
+  mkHBar('c-p-ch',paid.byChannel.map(r=>r.label),paid.byChannel.map(r=>r.value),'#00a86b');
+  mkHBar('c-p-co',paid.byCountry.map(r=>r.label),paid.byCountry.map(r=>r.value),'#0891b2');
+  // DYNAMIC MAX for churn chart
+  const churnVals=paid.churnByChannel.map(r=>parseFloat(r.value));
+  const churnMax=dynMax(churnVals,5);
+  mkHBar('c-p-churn',paid.churnByChannel.map(r=>r.label),churnVals,'#e03050',{min:0,max:churnMax});
+  mkHBar('c-p-avgd',paid.avgDaysByChannel.map(r=>r.label),paid.avgDaysByChannel.map(r=>parseFloat(r.value)),'#d97706');
+
+  // BY STAMP — paid tab
+  if (paid.byStamp && paid.byStamp.length) {
+    const topSt = paid.byStamp.slice(0, 15);
+    const topStConv = paid.byStamp.slice().sort((a,b)=>parseFloat(b.convRate)-parseFloat(a.convRate)).slice(0,15);
+    mkHBar('c-p-stamp',      topSt.map(r=>r.stamp),     topSt.map(r=>r.paid),                    '#00a86b');
+    mkHBar('c-p-stamp-conv', topStConv.map(r=>r.stamp), topStConv.map(r=>parseFloat(r.convRate)), '#0891b2');
+    const psb = document.getElementById('p-stamp-tbody');
+    if (psb) {
+      psb.innerHTML = '';
+      paid.byStamp.forEach(r => {
+        const tr = document.createElement('tr');
+        const chCls = parseFloat(r.churnRate)>=50?'p-r':parseFloat(r.churnRate)>=25?'p-y':'p-g';
+        const cvCls = parseFloat(r.convRate)>=5?'p-g':parseFloat(r.convRate)>=1?'p-y':'p-r';
+        tr.innerHTML =
+          `<td><strong>${r.stamp}</strong></td>`+
+          `<td class="num" style="color:var(--green);font-weight:600;">`+
+            `<span style="cursor:pointer;text-decoration:underline dotted;" onclick="openStampDrill('${r.stamp.replace(/'/g,"\\'")}')">` +
+            `${Number(r.paid).toLocaleString()}</span></td>`+
+          `<td class="num dim">${r.pct}%</td>`+
+          `<td class="num dim">${Number(r.installs).toLocaleString()}</td>`+
+          `<td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td>`+
+          `<td class="num" style="color:var(--cyan)">${Number(r.active).toLocaleString()}</td>`+
+          `<td class="num" style="color:var(--red)">${Number(r.churned).toLocaleString()}</td>`+
+          `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
+          `<td class="num">${r.avgDays}d</td>`;
+        psb.appendChild(tr);
+      });
+    }
   }
 
-  const stampCounts = {}, stampByPlat = {}, stampByMon = {}, stampPlatMap = {};
-  stampRows.forEach(r => {
-    const s = r.stamp;
-    const p = r.platform.includes('shopify')                                  ? 'shopify'
-            : r.platform.includes('etsy')                                    ? 'etsy'
-            : (r.platform.includes('woo') || r.platform.includes('wordpress')) ? 'woocommerce'
-            : 'other';
-    stampCounts[s] = (stampCounts[s] || 0) + 1;
-    stampByPlat[p] = (stampByPlat[p] || 0) + 1;
-    const d2 = new Date(r.createdAt);
-    if (!isNaN(d2)) {
-      const mk = d2.getFullYear() + '-' + String(d2.getMonth()+1).padStart(2,'0');
-      stampByMon[mk] = (stampByMon[mk] || 0) + 1;
-    }
-    if (!stampPlatMap[s]) stampPlatMap[s] = { shopify:0, etsy:0, woocommerce:0, other:0 };
-    stampPlatMap[s][p]++;
+  // LOST TAB
+  document.getElementById('l-imm').textContent=lost.immediate.toLocaleString();
+  document.getElementById('l-sh').textContent=lost.shortTerm.toLocaleString();
+  document.getElementById('l-lg').textContent=lost.longTerm.toLocaleString();
+  mkHBar('c-l-ch',lost.byChannel.map(r=>r.label),lost.byChannel.map(r=>r.value),'#e03050');
+  const sl=Object.entries(lost.churnBuckets).sort((a,b)=>b[1]-a[1]);
+  mkVBar('c-l-ttc',sl.map(e=>e[0]),sl.map(e=>e[1]),'#d97706');
+  mkHBar('c-l-co',lost.byCountry.map(r=>r.label),lost.byCountry.map(r=>r.value),'#8890b0');
+  // HORIZONTAL BAR for reasons (not doughnut)
+  const rsnVals=lost.reasons.map(r=>r.value);
+  const rsnMax=dynMax(rsnVals,2);
+  mkHBar('c-l-rsn',lost.reasons.map(r=>r.label),rsnVals,'#e03050',{min:0,max:rsnMax});
+
+  // ADS TAB
+  document.getElementById('a-spend').textContent=`$${Number(ads.totalSpend).toLocaleString()}`;
+  document.getElementById('a-clicks').textContent=ads.totalClicks.toLocaleString();
+  document.getElementById('a-ctr').textContent=`${ads.overallCTR}% CTR`;
+  document.getElementById('a-cpc').textContent=`$${ads.avgCPC}`;
+  document.getElementById('a-cpi').textContent=ads.overallCPI==='N/A'?'N/A':`$${ads.overallCPI}`;
+  document.getElementById('a-inst').textContent=`${ads.paidInstalls} atribuidos`;
+  document.getElementById('a-cpa').textContent=ads.overallCPA==='N/A'?'N/A':`$${ads.overallCPA}`;
+  document.getElementById('a-paid').textContent=`${ads.paidInstallPaid} paid atribuidos`;
+  const atb=document.getElementById('a-camp');
+  ads.campaignTable.forEach(r=>{
+    const tr=document.createElement('tr');
+    const sc=r.campaign.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=`<span title="Conversiones reportadas por Google Ads">${r.installs}</span>`;
+    const trialCell=r.trial>0?`<span class="drill-link" style="color:var(--cyan);font-weight:500;" onclick="openCampaignDrill('${sc}','trial')">${r.trial}</span>`:`<span style="color:var(--cyan)">0</span>`;
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openCampaignDrill('${sc}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
+    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;
+    atb.appendChild(tr);
+  });
+  const ktb=document.getElementById('a-kw');
+  ads.keywordTable.forEach(r=>{
+    const tr=document.createElement('tr');
+    const sk=r.keyword.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=r.installs>0?`<span class="drill-link" onclick="openKeywordDrill('${sk}','installs')">${r.installs}</span>`:`0`;
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openKeywordDrill('${sk}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
+    tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;
+    ktb.appendChild(tr);
   });
 
-  const stTotal   = stampRows.length;
-  const topStamps = Object.entries(stampCounts).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([l,v])=>({label:l,value:v}));
-  const stByPlat  = Object.entries(stampByPlat).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v}));
-  const stByMon   = Object.entries(stampByMon).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+  // SURFACE
+  if(surface.surfaceType.length) mkDo('c-srf',surface.surfaceType.map(r=>r.label),surface.surfaceType.map(r=>r.value));
+  if(surface.surfaceKw.length) mkHBar('c-skw',surface.surfaceKw.map(r=>r.label),surface.surfaceKw.map(r=>r.value),'#0891b2');
 
-  const _stDays={}, _stWeeks={};
-  stampRows.forEach(r=>{
-    const d=new Date(r.createdAt); if(isNaN(d)) return;
-    const dk=d.toISOString().split('T')[0];
-    _stDays[dk]=(_stDays[dk]||0)+1;
-    const wd=d.getDay();
-    const diff=d.getDate()-wd+(wd===0?-6:1);
-    const mon=new Date(d.getFullYear(),d.getMonth(),diff);
-    const wk=mon.toISOString().split('T')[0];
-    _stWeeks[wk]=(_stWeeks[wk]||0)+1;
-  });
-  const stByDay  = Object.entries(_stDays).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
-  const stByWeek = Object.entries(_stWeeks).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+  // STAMPS
+  if(stamps) {
+    document.getElementById('st-total').textContent   = stamps.total.toLocaleString();
+    document.getElementById('st-unique').textContent  = stamps.table ? stamps.table.length.toLocaleString() : '—';
+    const shopifyPl = stamps.byPlatform.find(p=>p.label==='shopify');
+    const etsyPl    = stamps.byPlatform.find(p=>p.label==='etsy');
+    const wooPl     = stamps.byPlatform.find(p=>p.label==='woocommerce'||p.label==='wordpress');
+    document.getElementById('st-shopify').textContent = shopifyPl ? shopifyPl.value.toLocaleString() : '0';
+    document.getElementById('st-etsy').textContent    = etsyPl    ? etsyPl.value.toLocaleString()    : '0';
+    document.getElementById('st-woo').textContent     = wooPl     ? wooPl.value.toLocaleString()     : '0';
+    _stSelected = [];
+    renderStampChart();
+    if(stamps.topStamps.length)  mkHBar('c-st-top', stamps.topStamps.map(r=>r.label),  stamps.topStamps.map(r=>r.value),  '#0d6e88');
+    if(stamps.byPlatform.length) mkDo('c-st-plat',  stamps.byPlatform.map(r=>r.label), stamps.byPlatform.map(r=>r.value));
+    _stampsTable = stamps.table || [];
+    renderStTable(_stampsTable);
+    document.getElementById('tb5').textContent = stamps.total.toLocaleString();
+    window._stAcOptions = _stampsTable.map(r => r.stamp);
+  } else {
+    const emp = document.getElementById('st-empty');
+    if(emp) emp.style.display='block';
+  }
 
-  const stTable = Object.entries(stampCounts).sort((a,b)=>b[1]-a[1]).slice(0,100).map(([s,t])=>{
-    const pm = stampPlatMap[s] || {};
-    const cv = stampConv[s]    || { paid:0, activated:0, churned:0, daysSum:0 };
-    return {
-      stamp:s, total:t, pct:((t/(stTotal||1))*100).toFixed(1),
-      paid:      cv.paid,
-      trial:     cv.activated,
-      convRate:  convRate(t, cv.paid),
-      churnRate: convRate(t, cv.churned),
-      avgDays:   t > 0 ? (cv.daysSum/t).toFixed(1) : '0.0',
-      shopify:pm.shopify||0, etsy:pm.etsy||0, woo:pm.woocommerce||0, other:pm.other||0
-    };
-  });
-  const stampRawRows = stampRows.map(r => ({
-    stamp: r.stamp,
-    date:  r.createdAt instanceof Date
-             ? r.createdAt.toISOString().split('T')[0]
-             : String(r.createdAt).substring(0, 10)
-  }));
-  const stampsData = stTotal > 0 ? { total:stTotal, topStamps, byPlatform:stByPlat, byMonth:stByMon, byWeek:stByWeek, byDay:stByDay, table:stTable, rawRows:stampRawRows } : null;
-
-  const _pbs = {};
-  paidRows.forEach(r => {
-    const s = r.stamp; if (!s) return;
-    if (!_pbs[s]) _pbs[s] = { paid:0, active:0, churned:0, daysSum:0 };
-    _pbs[s].paid++;
-    if (r.status==='Active')   _pbs[s].active++;
-    if (r.status==='Churned')  _pbs[s].churned++;
-    _pbs[s].daysSum += r.daysActive;
-  });
-  const _ibs = {};
-  allRows.forEach(r => { if (r.stamp) _ibs[r.stamp] = (_ibs[r.stamp]||0)+1; });
-
-  const paidByStamp = Object.entries(_pbs)
-    .sort((a,b)=>b[1].paid - a[1].paid)
-    .slice(0, 25)
-    .map(([stamp, v]) => {
-      const installs = _ibs[stamp] || 0;
-      return {
-        stamp,
-        paid:      v.paid,
-        pct:       ((v.paid/(paidRows.length||1))*100).toFixed(1),
-        active:    v.active,
-        churned:   v.churned,
-        churnRate: v.paid>0 ? ((v.churned/v.paid)*100).toFixed(1) : '0.0',
-        avgDays:   v.paid>0 ? (v.daysSum/v.paid).toFixed(1) : '0.0',
-        installs,
-        convRate:  installs>0 ? ((v.paid/installs)*100).toFixed(1) : '0.0'
-      };
+  // TRAFFIC SOURCES (BigQuery)
+  const ts = data.trafficSources || [];
+  document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
+  if(ts.length) {
+    mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
+    mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
+    const tstb = document.getElementById('ts-tbl');
+    tstb.innerHTML = '';
+    ts.forEach(r => {
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const _tsIdx = _tsDrillRows.length;
+      _tsDrillRows.push(r);
+      const trialCell = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${r.trials}</span>`
+        : `<span style="color:var(--green)">0</span>`;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td>`;
+      tstb.appendChild(tr);
     });
+    const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
+    const totTrials   = ts.reduce((s,r)=>s+(r.trials||0),0);
+    const totTrialPct = totInstalls > 0 ? ((totTrials/totInstalls)*100).toFixed(1) : '0.0';
+    const totRow = document.createElement('tr');
+    totRow.style.fontWeight='700';
+    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials}</td><td class="num">${totTrialPct}%</td>`;
+    tstb.appendChild(totRow);
+    document.getElementById('ts-empty').style.display='none';
+  } else {
+    document.getElementById('ts-empty').style.display='block';
+  }
 
-  return {
-    funnel: {
-      totalInstalls, uniqueShops,
-      totalActivated, activationRate,
-      totalPaid, uniquePaidShops,
-      totalActive, totalChurned, churnRate, conversionRate, avgDaysAll, quality,
-      byChannel:    convByDim(allRows, paidRows, 'channel', 15),
-      byCountry:    convByDim(allRows, paidRows, 'country', 15),
-      byKeyword:    convByDim(allRows, paidRows, 'keyword', 15),
-      byDay:        installsByDay(allRows),
-      byWeek:       installsByWeek(allRows),
-      byMonth:      installsByMonth(allRows),
-      churnBuckets: churnBuckets(allRows),
-      details:      funnelDetails
-    },
-    paid: {
-      total: paidRows.length, active: paidActive, churned: paidChurned,
-      churnRate: paidChurnRate, avgDays: avgDaysPaid, totalRevenue,
-      byChannel:        groupCount(paidRows,'channel'),
-      byCountry:        groupCount(paidRows,'country',15),
-      byKeyword:        groupCount(paidRows,'keyword',15),
-      byDay:            installsByDay(paidRows),
-      byWeek:           installsByWeek(paidRows),
-      byMonth:          installsByMonth(paidRows),
-      churnByChannel:   churnByDim(paidRows,'channel'),
-      avgDaysByChannel: avgDaysByDim(paidRows,'channel'),
-      churnBuckets:     churnBuckets(paidRows),
-      byStamp:          paidByStamp,
-      details:          paidDetails
-    },
-    lost: {
-      total: lostTotal, immediate: lostImmediate,
-      shortTerm: lostShortTerm, longTerm: lostLongTerm,
-      byChannel:      groupCount(lostRows,'channel'),
-      byCountry:      groupCount(lostRows,'country',15),
-      byKeyword:      groupCount(lostRows,'keyword',15),
-      churnBuckets:   churnBuckets(lostRows),
-      churnByChannel: churnByDim(lostRows,'channel'),
-      reasons: (()=>{
-        const installSheet=SpreadsheetApp.openById(SHEET_ID).getSheetByName('Installs');
-        if(!installSheet) return [];
-        const rc={};
-        const latestUninstallByDomain={};
-        installSheet.getDataRange().getValues().slice(1)
-          .filter(r=>{
-            if(r[3]!=='RELATIONSHIP_UNINSTALLED') return false;
-            const d=new Date(r[4]);
-            return !isNaN(d) && d>=fromDate && d<=toDate;
-          })
-          .forEach(r=>{
-            const domain=String(r[0]||'').trim().toLowerCase();
-            if(!domain) return;
-            const d=new Date(r[4]);
-            if(!latestUninstallByDomain[domain] || d>new Date(latestUninstallByDomain[domain][4])){
-              latestUninstallByDomain[domain]=r;
-            }
-          });
-        Object.values(latestUninstallByDomain).forEach(r=>{
-            const raw=String(r[5]||'').trim().toLowerCase();
-            let label='Other';
-            if(!raw||raw==='other')                              label='Other';
-            else if(raw.includes('merchant_not_respond'))        label='Merchant not responding';
-            else if(raw.includes('developer_initiated'))         label='Developer initiated';
-            else if(raw.includes('merchant_initiated'))          label='Merchant initiated';
-            else if(raw.includes('business_termination'))        label='Business terminated';
-            else if(raw.includes('expired'))                     label='Trial expired';
-            else if(raw.includes('fraud'))                       label='Fraud / policy';
-            else if(raw.includes('pricing')||raw.includes('price')||raw.includes('cost')||raw.includes('expensive')) label='Pricing';
-            else if(raw.includes('missing')||raw.includes('feature')||raw.includes('function'))  label='Missing features';
-            else if(raw.includes('difficult')||raw.includes('complex')||raw.includes('hard'))    label='Too complex';
-            else if(raw.includes('switch')||raw.includes('alternative')||raw.includes('competitor')) label='Switched to competitor';
-            else if(raw.includes('test')||raw.includes('trial')||raw.includes('demo'))           label='Testing only';
-            else if(raw.includes('no longer')||raw.includes('not need'))                         label='No longer needed';
-            else                                                 label='Other';
-            rc[label]=(rc[label]||0)+1;
-          });
-        return Object.entries(rc).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v}));
-      })()
-    },
-    ads: {
-      totalSpend: totalAdSpend.toFixed(2), totalClicks: totalAdClicks,
-      totalImpr: totalAdImpr, avgCPC, overallCTR,
-      paidInstalls: paidInstalls.length,
-      paidInstallPaid: paidInstallPaid.length,
-      overallCPI, overallCPA,
-      campaignTable, keywordTable, weeklySpend
-    },
-    surface: { surfaceType, surfaceKw },
-    stamps: stampsData,
-    trafficSources: (()=>{
-      const activatedDomains = new Set(activatedRows.map(r=>String(r.domain||'').toLowerCase().trim()));
-      return trafficSources.map(ts => {
-        let trials = 0;
-        (ts.shops||[]).forEach(shop => {
-          const d = String(shop||'').toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'').trim();
-          if(activatedDomains.has(d)) trials++;
-        });
-        return { ...ts, trials };
-      });
-    })(),
-    trialDomains: activatedRows.map(r=>String(r.domain||'').toLowerCase().trim()).filter(Boolean),
-    shopifyKeywords: (()=>{
-      // Lee de sheet pre-cacheada, filtra por fecha. Para actualizar: correr refreshTrafficData().
-      const kws = getShopifyKeywordsFromSheet(fromDate, toDate);
-      const activatedDomains = new Set(activatedRows.map(r=>String(r.domain||'').toLowerCase().trim()));
-      const paidDomains      = new Set(paidRows.map(r=>String(r.domain||'').toLowerCase().trim()));
-      return kws.map(k => {
-        const trials = k.shops.filter(s => activatedDomains.has(String(s||'').toLowerCase().trim())).length;
-        const paid   = k.shops.filter(s => paidDomains.has(String(s||'').toLowerCase().trim())).length;
-        return { ...k, trials, paid };
-      });
-    })()
+  // Build global trial domains set (sent from backend)
+  window._tsTrialDomains = new Set((data.trialDomains||[]).map(s=>s.toLowerCase().trim()));
+
+  // SHOPIFY KEYWORDS
+  const skw = data.shopifyKeywords || [];
+  var _skwAllRows = skw; // keep full list for filtering
+  if(skw.length) {
+    const kwtb = document.getElementById('ts-kw-tbl');
+    kwtb.innerHTML = '';
+    skw.forEach(r => {
+      const typePill = r.type === 'cpc'
+        ? `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--yellow-soft);color:var(--yellow);font-weight:600;">CPC</span>`
+        : `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--green-soft);color:var(--green);font-weight:600;">Organic</span>`;
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.title = 'Ver stores';
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const _kwIdx = _kwDrillRows.length;
+      _kwDrillRows.push(r);
+      const trialClick = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrillByIdx(${_kwIdx},'trial')">${r.trials}</span>`
+        : `<span style="color:var(--green)">0</span>`;
+      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrillByIdx(${_kwIdx},'all')">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num">${trialClick}</td><td class="num">${cpill(trialPct)}</td>`;
+      kwtb.appendChild(tr);
+    });
+    document.getElementById('ts-kw-empty').style.display='none';
+  } else {
+    document.getElementById('ts-kw-empty').style.display='block';
+  }
+
+  // RETENTION
+  const sa=Object.entries(funnel.churnBuckets).sort((a,b)=>b[1]-a[1]);
+  const sp=Object.entries(paid.churnBuckets).sort((a,b)=>b[1]-a[1]);
+  mkVBar('c-r-ttc',sa.map(e=>e[0]),sa.map(e=>e[1]),'#3d6fff');
+  mkVBar('c-r-ttcp',sp.map(e=>e[0]),sp.map(e=>e[1]),'#00a86b');
+  // HORIZONTAL BAR for reasons in retention tab too
+  mkHBar('c-r-rsn',lost.reasons.map(r=>r.label),rsnVals,'#9b5de5',{min:0,max:rsnMax});
+  // DYNAMIC MAX for conv rate by channel
+  const convVals=funnel.byChannel.map(r=>parseFloat(r.convRate));
+  const convMax=dynMax(convVals,5);
+  mkHBar('c-r-ch',funnel.byChannel.map(r=>r.label),convVals,'#7c3aed',{min:0,max:convMax});
+
+  document.getElementById('fts').textContent='Generado: '+new Date().toLocaleString();
+  startTimer();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('footer').style.display='flex';
+  toast('Dashboard listo','success');
+  } catch(renderErr){
+    console.error('[Customily] render() error:', renderErr);
+    const msg=document.getElementById('loading-msg');
+    if(msg){msg.textContent='Error JS: '+renderErr.message;msg.style.color='#e03050';msg.style.animation='none';msg.style.letterSpacing='normal';msg.style.textTransform='none';}
+    const ring=document.querySelector('.sk-ring');
+    if(ring){ring.style.borderColor='var(--border)';ring.style.borderTopColor='#e03050';ring.style.animation='none';}
+  }
+}
+
+function closeDrill(){
+  document.getElementById('drill-modal').classList.remove('show');
+  document.body.style.overflow='';
+}
+
+// ── SHOPIFY KEYWORD DRILL ─────────────────────────────────
+var _kwDrillData = null;
+var _kwDrillMode = 'all';
+function openKwDrill(row, mode) {
+  _kwDrillData = row;
+  _kwDrillMode = mode || 'all';
+  const typeLabel = row.type === 'cpc' ? 'CPC' : row.type === 'organic' ? 'Organic' : row.type || 'Canal';
+  document.getElementById('kw-modal-title').textContent = row.keyword || row.canal || '(not provided)';
+  _renderKwDrillBody();
+  document.getElementById('kw-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function _normDomain(s) {
+  return String(s||'').toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'').trim();
+}
+function _renderKwDrillBody() {
+  const row = _kwDrillData;
+  const mode = _kwDrillMode;
+  const allShops = row.shops || [];
+  const td = window._tsTrialDomains || new Set();
+  let shops = allShops;
+  if(mode === 'trial') shops = allShops.filter(s => td.has(_normDomain(s)));
+  const typeLabel = row.type === 'cpc' ? 'CPC' : row.type === 'organic' ? 'Organic' : (row.type||'');
+  const modeLabel = mode === 'trial' ? 'trial' : 'installs';
+  document.getElementById('kw-modal-sub').textContent = (typeLabel ? typeLabel + ' · ' : '') + shops.length + ' ' + modeLabel;
+  const tbody = document.getElementById('kw-drill-tbody');
+  tbody.innerHTML = '';
+  shops.forEach(s => {
+    const isTrial = td.has(_normDomain(s));
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="mono" style="font-size:12px;">${s}${isTrial&&mode!=='trial' ? ' <span style="font-size:10px;padding:1px 6px;border-radius:100px;background:var(--green-soft);color:var(--green);">trial</span>' : ''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function openKwDrillByIdx(idx, mode) {
+  const row = window._kwDrillRows && window._kwDrillRows[idx];
+  if(!row) return;
+  openKwDrill(row, mode);
+}
+function openTsDrillByIdx(idx, mode) {
+  const row = window._tsDrillRows && window._tsDrillRows[idx];
+  if(!row) return;
+  openKwDrill(row, mode);
+}
+function filterKwTable(type, btn) {
+  document.querySelectorAll('#kw-f-all,#kw-f-organic,#kw-f-cpc').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const rows = document.querySelectorAll('#ts-kw-tbl tr');
+  rows.forEach(tr => {
+    if(type === 'all') { tr.style.display=''; return; }
+    // type pill is in 2nd cell — check text
+    const pill = tr.cells[1] && tr.cells[1].textContent.trim().toLowerCase();
+    tr.style.display = (pill === type) ? '' : 'none';
+  });
+}
+function closeKwDrill() {
+  document.getElementById('kw-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+function expKwDrill() {
+  if (!_kwDrillData) return;
+  const rows = (_kwDrillData.shops || []).map(s => `"${s}"`).join('\n');
+  const csv = 'shop_url\n' + rows;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = `kw-${(_kwDrillData.keyword||'keyword').replace(/\s+/g,'-')}.csv`;
+  a.click();
+}
+
+function expDrill(){
+  const ctx=document.getElementById('drill-modal')._drillData;
+  if(!ctx) return;
+  // Use thead to get current columns
+  const thead=document.getElementById('drill-thead');
+  const heads=thead?[...thead.querySelectorAll('th')].map(th=>th.textContent.trim()):['domain','platform','status','channel','daysActive','createdAt'];
+  // Build rows from tbody
+  const tbody=document.getElementById('drill-tbody');
+  const rows=[...tbody.querySelectorAll('tr')].map(tr=>[...tr.cells].map(td=>td.textContent.trim()));
+  const csv=[heads,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`customily-${ctx.stamp}-${ctx.metric}-${new Date().toISOString().slice(0,10)}.csv`.replace(/\s+/g,'-');
+  a.click();
+  toast('Exportado','success');
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('drill-modal').classList.contains('show')) closeDrill();
+});
+
+// ── FUNNEL / PAID DRILL-DOWN ─────────────────────────────
+function _openGenericDrill(title, subtitle, allRows, filterFn, colHeaders, rowRenderer) {
+  const rows = filterFn ? allRows.filter(filterFn) : allRows;
+
+  document.getElementById('drill-stamp-tag').textContent = title;
+  document.getElementById('drill-metric-tag').textContent = subtitle;
+  document.getElementById('drill-count-tag').textContent = rows.length.toLocaleString() + ' merchants';
+
+  // Summary pills
+  const paid    = rows.filter(r=>r.paid).length;
+  const act     = rows.filter(r=>r.activated).length;
+  const churned = rows.filter(r=>r.status==='Churned').length;
+  const active  = rows.filter(r=>r.status==='Active').length;
+  const avgDays = rows.length > 0 ? (rows.reduce((s,r)=>s+(r.daysActive||0),0)/rows.length).toFixed(1) : 0;
+  const stats = [];
+  stats.push({l:'Total', v:rows.length.toLocaleString()});
+  if(rows.some(r=>'paid' in r))    stats.push({l:'Paid',    v:paid.toLocaleString(),    c:'var(--green)'});
+  if(rows.some(r=>'activated' in r)) stats.push({l:'Trial', v:act.toLocaleString(),     c:'var(--cyan)'});
+  stats.push({l:'Active',   v:active.toLocaleString(),   c:'var(--cyan)'});
+  stats.push({l:'Churned',  v:churned.toLocaleString(),  c:'var(--red)'});
+  stats.push({l:'Avg Days', v:avgDays+'d'});
+  document.getElementById('drill-summary').innerHTML = stats.map(s=>`<div class="drill-stat"><div class="drill-stat-v" style="${s.c?'color:'+s.c:''}">${s.v}</div><div class="drill-stat-l">${s.l}</div></div>`).join('');
+
+  // Rebuild thead
+  document.getElementById('drill-thead').innerHTML='<tr>'+colHeaders.map((h,i)=>`<th onclick="srt('drill-tbl',${i})">${h}</th>`).join('')+'</tr>';
+
+  // Populate rows
+  const tbody = document.getElementById('drill-tbody');
+  tbody.innerHTML = '';
+  rows.sort((a,b)=>(b.daysActive||0)-(a.daysActive||0)).forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = rowRenderer(r);
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('drill-modal')._drillData = {stamp:title, metric:subtitle, rows,
+    exportHeads: colHeaders};
+  document.getElementById('drill-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function openFunnelDrill(metric) {
+  const labels = {all:'Total Installs', paid:'Paid Merchants', active:'Currently Active', churned:'Dropped'};
+  const filters = {
+    all:     null,
+    paid:    r=>r.paid,
+    active:  r=>r.status==='Active',
+    churned: r=>r.status==='Churned'
   };
+  const cols = ['Domain','Canal','País','Estado','Días Activo','Install Date'];
+  const renderer = r => {
+    const sc = r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td>`+
+      `<td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`;
+  };
+  _openGenericDrill('Full Funnel', labels[metric]||metric, _funnelDetails, filters[metric], cols, renderer);
 }
 
-// ============================================================
-// LEER Traffic_Sources DESDE SHEET — filtra por fecha, agrega por canal
-// Sheet cols: shop | install_date | channel | is_trial
-// ============================================================
-function getTrafficSourcesFromSheet(fromDate, toDate) {
-  const ss    = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName('Traffic_Sources');
-  if (!sheet || sheet.getLastRow() < 2) return [];
+function openPaidDrill(metric) {
+  const labels = {all:'All Paid Merchants', active:'Active', churned:'Churned'};
+  const filters = {
+    all:     null,
+    active:  r=>r.status==='Active',
+    churned: r=>r.status==='Churned'
+  };
+  const cols = ['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay'];
+  const renderer = r => {
+    const sc = r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td>`+
+      `<td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`+
+      `<td class="dim">${r.firstPayDate||'—'}</td>`;
+  };
+  _openGenericDrill('Paid Merchants', labels[metric]||metric, _paidDetails, filters[metric], cols, renderer);
+}
 
-  const rows = sheet.getDataRange().getValues().slice(1);
-  const channelMap = {};
+// ── ADS / CHANNEL / LOST DRILL-DOWNS ────────────────────
 
+// Normalizes any Ad0X variant → base campaign name
+// Handles: "Ad06 Search..." → strip prefix | "Search... Ad06" → strip suffix
+function normCamp(name){
+  return String(name||'')
+    .replace(/^Ad\d+\s+/i,'')   // strip leading "Ad06 "
+    .replace(/\s+Ad\d+$/i,'')   // strip trailing " Ad06"
+    .trim();
+}
+
+// Shared renderer for ads/channel drill-downs (includes keyword column)
+function _adsRowRenderer(r){
+  const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+  const kw=String(r.keyword||'');
+  return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+    `<td class="dim">${r.channel||'—'}</td>`+
+    `<td class="dim">${r.country||'—'}</td>`+
+    `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+    `<td class="num">${r.daysActive||0}d</td>`+
+    `<td class="dim">${r.installDate||'—'}</td>`+
+    `<td class="dim">${r.firstPayDate||'—'}</td>`+
+    `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw}">${kw||'—'}</td>`;
+}
+
+const _ADS_COLS=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Keyword'];
+
+function openCampaignDrill(campaign, type){
+  const isPaid   = type==='paid';
+  const isTrial  = type==='trial';
+  const nc = normCamp(campaign);
+  let filter;
+  if (isPaid)       filter = r => normCamp(r.campaign)===nc && r.paid;
+  else if (isTrial) filter = r => normCamp(r.campaign)===nc && r.activated;
+  else              filter = r => normCamp(r.campaign)===nc;
+  const label = isPaid ? 'Paid Mrchs · ' : isTrial ? 'Trial · ' : 'Installs · ';
+  _openGenericDrill('Campaign', label+nc, _funnelDetails, filter, _ADS_COLS, _adsRowRenderer);
+}
+
+function openKeywordDrill(keyword, type){
+  const isPaid=type==='paid';
+  const base=isPaid?_paidDetails:_funnelDetails;
+  const kw=keyword.toLowerCase().trim();
+  const filter=r=>String(r.keyword||'').toLowerCase().trim()===kw&&(isPaid?r.paid:true);
+  _openGenericDrill('Keyword',(isPaid?'Paid Mrchs · ':'Installs · ')+keyword, base, filter, _ADS_COLS, _adsRowRenderer);
+}
+
+function openChannelDrill(channel, type){
+  const isPaid=type==='paid';
+  const base=isPaid?_paidDetails:_funnelDetails;
+  const filter=r=>r.channel===channel&&(isPaid?r.paid:true);
+  const cols=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Campaign'];
+  const renderer=r=>{
+    const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td><td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`+
+      `<td class="dim">${r.firstPayDate||'—'}</td>`+
+      `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.campaign||''}">${r.campaign||'—'}</td>`;
+  };
+  _openGenericDrill('Channel',(isPaid?'Paid Mrchs · ':'Installs · ')+channel, base, filter, cols, renderer);
+}
+
+function openLostBucketDrill(bucket){
+  const labels={immediate:'Under 1 hour',shortTerm:'1–7 days',longTerm:'Active, not paid'};
+  const filters={
+    immediate: r=>!r.paid&&r.daysActive===0,
+    shortTerm:  r=>!r.paid&&r.daysActive>=1&&r.daysActive<=7,
+    longTerm:   r=>!r.paid&&r.daysActive>7
+  };
+  const cols=['Domain','Canal','País','Estado','Días Activo','Install Date','Campaign','Keyword'];
+  const renderer=r=>{
+    const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    const kw=String(r.keyword||'');
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td><td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`+
+      `<td class="dim" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.campaign||''}">${r.campaign||'—'}</td>`+
+      `<td class="dim" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw}">${kw||'—'}</td>`;
+  };
+  _openGenericDrill('Non-Converters', labels[bucket]||bucket, _funnelDetails, filters[bucket], cols, renderer);
+}
+
+// ── STAMPS HELPERS ───────────────────────────────────────
+function renderStTable(rows) {
+  const stb = document.getElementById('st-tbl');
+  if (!stb) return;
+  stb.innerHTML = '';
   rows.forEach(r => {
-    const shop    = String(r[0] || '').trim();
-    const channel = String(r[2] || 'Other').trim();
-    const isTrial = Number(r[3]) === 1;
+    const tr = document.createElement('tr');
+    const cv = parseFloat(r.convRate || 0);
+    const ch = parseFloat(r.churnRate || 0);
+    const cvCls = cv >= 5 ? 'p-g' : cv >= 1 ? 'p-y' : 'p-r';
+    const chCls = ch >= 50 ? 'p-r' : ch >= 25 ? 'p-y' : 'p-g';
+    const safeStamp = r.stamp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const paidCell = r.paid > 0
+      ? `<span style="cursor:pointer;color:var(--green);font-weight:600;text-decoration:underline dotted;text-underline-offset:2px;" onclick="openStampDrill('${safeStamp}')">${Number(r.paid).toLocaleString()}</span>`
+      : '0';
+    const trialCount = Number(r.trial != null ? r.trial : (r.trials != null ? r.trials : (r.activated != null ? r.activated : 0)));
+    const trialCell = trialCount > 0
+      ? `<span style="cursor:pointer;color:var(--cyan);font-weight:600;text-decoration:underline dotted;text-underline-offset:2px;" onclick="openStampTrialDrill('${safeStamp}')">${trialCount.toLocaleString()}</span>`
+      : '0';
+    tr.innerHTML =
+      `<td><strong>${r.stamp}</strong></td>`+
+      `<td class="num">${Number(r.total).toLocaleString()}</td>`+
+      `<td class="num dim">${r.pct}%</td>`+
+      `<td class="num">${trialCell}</td>`+
+      `<td class="num">${paidCell}</td>`+
+      `<td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td>`+
+      `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
+      `<td class="num">${r.avgDays}d</td>`+
+      `<td class="num">${r.shopify.toLocaleString()}</td>`+
+      `<td class="num">${r.etsy.toLocaleString()}</td>`+
+      `<td class="num">${r.woo.toLocaleString()}</td>`+
+      `<td class="num">${r.other.toLocaleString()}</td>`;
+    stb.appendChild(tr);
+  });
+  const cnt = document.getElementById('st-cnt');
+  if (cnt) cnt.textContent = rows.length + ' stamp' + (rows.length !== 1 ? 's' : '') +
+    (_stampsTable.length > rows.length ? ` (filtrado de ${_stampsTable.length})` : '');
+}
 
-    let installDate;
-    if (r[1] instanceof Date) {
-      installDate = r[1];
-    } else {
-      const rawDate = String(r[1] || '').trim();
-      installDate = rawDate ? new Date(rawDate + 'T12:00:00') : null;
-    }
+function filterStamps(q) {
+  const v = (q || '').toLowerCase().trim();
+  renderStTable(v ? _stampsTable.filter(r => r.stamp.toLowerCase().includes(v)) : _stampsTable);
+}
 
-    if (!shop || !installDate || isNaN(installDate)) return;
-    const installStr = installDate.toISOString().substring(0, 10);
-    const fromStr    = fromDate ? fromDate.toISOString().substring(0, 10) : null;
-    const toStr      = toDate   ? toDate.toISOString().substring(0, 10)   : null;
-    if (fromStr && installStr < fromStr) return;
-    if (toStr   && installStr > toStr)   return;
+function openStampTrialDrill(stamp) {
+  const rows = _funnelDetails.filter(r => r.stamp === stamp && r.activated);
+  const cols = ['Domain', 'Canal', 'País', 'Estado', 'Días Activo', 'Install Date'];
+  const renderer = r => {
+    const sc = r.status === 'Active' ? 'var(--green)' : r.status === 'Churned' ? 'var(--red)' : 'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td>`+
+      `<td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`;
+  };
+  _openGenericDrill(stamp, 'Trial · Stamp', rows, null, cols, renderer);
+}
 
-    if (!channelMap[channel]) channelMap[channel] = { installs: 0, trials: 0, shops: [] };
-    channelMap[channel].installs++;
-    if (isTrial) channelMap[channel].trials++;
-    channelMap[channel].shops.push(shop);
+function openStampDrill(stamp) {
+  const rows = _paidDetails.filter(r => r.stamp === stamp);
+  const cols = ['Domain', 'Canal', 'País', 'Estado', 'Días Activo', 'Install Date', 'First Pay'];
+  const renderer = r => {
+    const sc = r.status === 'Active' ? 'var(--green)' : r.status === 'Churned' ? 'var(--red)' : 'var(--text-3)';
+    return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
+      `<td class="dim">${r.channel||'—'}</td>`+
+      `<td class="dim">${r.country||'—'}</td>`+
+      `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
+      `<td class="num">${r.daysActive||0}d</td>`+
+      `<td class="dim">${r.installDate||'—'}</td>`+
+      `<td class="dim">${r.firstPayDate||'—'}</td>`;
+  };
+  _openGenericDrill(stamp, 'Paid Merchants · Stamp', rows, null, cols, renderer);
+}
+
+function setStampGran(g, btn) {
+  btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStampChart();
+}
+
+function _stGranActive() {
+  const b = document.querySelector('#page-stamps .gran-btn.active');
+  return b ? b.textContent.toLowerCase() : 'monthly';
+}
+
+function _aggByDay(rows) {
+  const m = {};
+  rows.forEach(r => { if (!r.installDate) return; const k = String(r.installDate).substring(0,10); m[k]=(m[k]||0)+1; });
+  const sorted = Object.keys(m).sort();
+  if (!sorted.length) return [];
+  // Rellenar días vacíos con 0
+  const result = [], cur = new Date(sorted[0]+'T12:00:00'), end = new Date(sorted[sorted.length-1]+'T12:00:00');
+  while (cur <= end) { const k = cur.toISOString().split('T')[0]; result.push({label:k, value:m[k]||0}); cur.setDate(cur.getDate()+1); }
+  return result;
+}
+
+function _aggByWeek(rows) {
+  const m = {};
+  rows.forEach(r => {
+    if (!r.installDate) return;
+    const d = new Date(r.installDate); if (isNaN(d)) return;
+    const day = d.getDay(), diff = d.getDate()-day+(day===0?-6:1);
+    const k = new Date(d.getFullYear(),d.getMonth(),diff).toISOString().split('T')[0];
+    m[k]=(m[k]||0)+1;
+  });
+  const sorted = Object.keys(m).sort();
+  if (!sorted.length) return [];
+  // Rellenar semanas vacías con 0
+  const result = [], cur = new Date(sorted[0]+'T12:00:00'), end = new Date(sorted[sorted.length-1]+'T12:00:00');
+  while (cur <= end) { const k = cur.toISOString().split('T')[0]; result.push({label:k, value:m[k]||0}); cur.setDate(cur.getDate()+7); }
+  return result;
+}
+
+function _aggByMonth(rows) {
+  const m = {};
+  rows.forEach(r => { if (!r.installDate) return; const k=String(r.installDate).substring(0,7); if(k) m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+
+// ── STAMP CHART AUTOCOMPLETE ─────────────────────────────
+var _stAcIdx = -1;
+function _stAcShow(q) {
+  const drop = document.getElementById('st-ac-drop');
+  if (!drop) return;
+  const v = (q || '').toLowerCase().trim();
+  const opts = (window._stAcOptions || []).filter(s => !v || s.toLowerCase().includes(v)).slice(0, 20);
+  if (!opts.length) { drop.style.display = 'none'; return; }
+  _stAcIdx = -1;
+  drop.innerHTML = opts.map((s, i) =>
+    `<div class="st-ac-item" data-val="${s}" data-i="${i}"
+      style="padding:7px 10px;border-radius:7px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+      onmousedown="_stAcPick('${s.replace(/'/g,"\\'")}')">
+      ${v ? s.replace(new RegExp('('+v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<strong>$1</strong>') : s}
+    </div>`
+  ).join('');
+  drop.style.display = 'block';
+}
+function _stAcHide() {
+  const drop = document.getElementById('st-ac-drop');
+  if (drop) drop.style.display = 'none';
+}
+var _stSelected = [];
+
+function _stAcPick(val) {
+  if (!_stSelected.includes(val)) {
+    _stSelected.push(val);
+    _stRenderPills();
+    renderStampChart();
+  }
+  const inp = document.getElementById('st-chart-search');
+  if (inp) { inp.value = ''; inp.style.borderColor = ''; inp.style.boxShadow = ''; }
+  _stAcHide();
+}
+
+function _stRemove(val) {
+  _stSelected = _stSelected.filter(s => s !== val);
+  _stRenderPills();
+  renderStampChart();
+}
+
+function _stRenderPills() {
+  const wrap = document.getElementById('st-selected-pills');
+  if (!wrap) return;
+  if (!_stSelected.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = _stSelected.map((s, i) => {
+    const col = PAL[i % PAL.length];
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;border-radius:100px;background:${col}22;border:1px solid ${col}55;font-family:'JetBrains Mono',monospace;font-size:11px;color:${col};font-weight:600;">
+      ${s}
+      <button onclick="_stRemove('${s.replace(/'/g,"\\'")}') " style="background:none;border:none;cursor:pointer;color:inherit;font-size:12px;line-height:1;padding:0;opacity:.7;" title="Quitar">✕</button>
+    </span>`;
+  }).join('') + `<button onclick="_stSelected=[];_stRenderPills();renderStampChart()" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 10px;border-radius:100px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text-3);cursor:pointer;">Limpiar todo</button>`;
+}
+function _stAcKey(e) {
+  const drop = document.getElementById('st-ac-drop');
+  if (!drop || drop.style.display === 'none') return;
+  const items = drop.querySelectorAll('.st-ac-item');
+  if (e.key === 'ArrowDown') { _stAcIdx = Math.min(_stAcIdx+1, items.length-1); }
+  else if (e.key === 'ArrowUp') { _stAcIdx = Math.max(_stAcIdx-1, 0); }
+  else if (e.key === 'Enter' && _stAcIdx >= 0) { e.preventDefault(); _stAcPick(items[_stAcIdx].dataset.val); return; }
+  else if (e.key === 'Escape') { _stAcHide(); return; }
+  else return;
+  items.forEach((el, i) => {
+    el.style.background = i === _stAcIdx ? 'var(--surface-alt)' : '';
+  });
+}
+
+function filterStampChart(q) {
+  // solo actualiza el autocomplete, no el gráfico (el gráfico lo maneja renderStampChart)
+  const clearBtn = document.getElementById('st-chart-clear');
+  if (clearBtn) clearBtn.style.display = (q||'').trim() ? 'block' : 'none';
+}
+
+function renderStampChart() {
+  if (!_data || !_data.stamps) return;
+  const gran = _stGranActive();
+  if (_ch['c-st-mon']) { _ch['c-st-mon'].destroy(); delete _ch['c-st-mon']; }
+  freshCanvas('c-st-mon');
+
+  if (!_stSelected.length) {
+    // Agregado total
+    const s = _data.stamps;
+    const td = gran === 'daily'  ? (s.byDay  || s.byMonth)
+             : gran === 'weekly' ? (s.byWeek || s.byMonth)
+             : s.byMonth;
+    _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), '#0d6e88');
+    return;
+  }
+
+  // Multi-línea: una por stamp seleccionado
+  const rawRows = _data.stamps.rawRows || [];
+  const datasets = _stSelected.map((stamp, i) => {
+    const rows = rawRows.filter(r => r.stamp === stamp).map(r => ({installDate: r.date}));
+    const td = gran === 'daily'  ? _aggByDay(rows)
+             : gran === 'weekly' ? _aggByWeek(rows)
+             : _aggByMonth(rows);
+    const col = PAL[i % PAL.length];
+    const map = Object.fromEntries(td.map(r => [r.label, r.value]));
+    return { stamp, td, col, map };
   });
 
-  const total = Object.values(channelMap).reduce((s, v) => s + v.installs, 0);
-  return Object.entries(channelMap)
-    .sort((a, b) => b[1].installs - a[1].installs)
-    .map(([canal, v]) => ({
-      canal,
-      installs: v.installs,
-      pct:      total > 0 ? ((v.installs / total) * 100).toFixed(1) : '0.0',
-      trials:   v.trials,
-      shops:    v.shops
-    }));
-}
+  const allLabels = [...new Set(datasets.flatMap(d => d.td.map(r => r.label)))].sort();
+  const {muted, grid} = gc();
 
-// ============================================================
-// LEER Shopify_Keywords DESDE SHEET — filtra por fecha, agrega por keyword+type
-// Sheet cols: keyword | type | shop | install_date | is_trial
-// ============================================================
-function getShopifyKeywordsFromSheet(fromDate, toDate) {
-  const ss    = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName('Shopify_Keywords');
-  if (!sheet || sheet.getLastRow() < 2) return [];
-
-  const rows = sheet.getDataRange().getValues().slice(1);
-  const kwMap = {};
-
-  rows.forEach(r => {
-    const keyword = String(r[0] || '').trim();
-    const type    = String(r[1] || '').trim();
-    const shop    = String(r[2] || '').trim();
-    const isTrial = Number(r[4]) === 1;
-
-    let installDate;
-    if (r[3] instanceof Date) {
-      installDate = r[3];
-    } else {
-      const rawDate = String(r[3] || '').trim();
-      installDate = rawDate ? new Date(rawDate + 'T12:00:00') : null;
+  _ch['c-st-mon'] = new Chart(document.getElementById('c-st-mon'), {
+    type: 'line',
+    data: {
+      labels: allLabels,
+      datasets: datasets.map(d => ({
+        label: d.stamp,
+        data: allLabels.map(l => d.map[l] || 0),
+        borderColor: d.col,
+        backgroundColor: d.col + '18',
+        borderWidth: 2, fill: true, tension: .2,
+        pointRadius: 3, pointBackgroundColor: d.col, pointHoverRadius: 5
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: muted, boxWidth: 10, padding: 14, font: { family: "'JetBrains Mono',monospace", size: 10 } } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: muted, maxTicksLimit: 10 } },
+        y: { grid: { color: grid }, ticks: { color: muted, precision: 0, stepSize: 1 } }
+      }
     }
-
-    if (!keyword || !installDate || isNaN(installDate)) return;
-    const installStr = installDate.toISOString().substring(0, 10);
-    const fromStr    = fromDate ? fromDate.toISOString().substring(0, 10) : null;
-    const toStr      = toDate   ? toDate.toISOString().substring(0, 10)   : null;
-    if (fromStr && installStr < fromStr) return;
-    if (toStr   && installStr > toStr)   return;
-
-    const key = keyword + '|||' + type;
-    if (!kwMap[key]) kwMap[key] = { keyword, type, installs: 0, trials: 0, shops: [] };
-    kwMap[key].installs++;
-    if (isTrial) kwMap[key].trials++;
-    kwMap[key].shops.push(shop);
   });
-
-  return Object.values(kwMap)
-    .sort((a, b) => b.installs - a.installs);
 }
+
+// ── BOOT ─────────────────────────────────────────────────
+function onError(err){
+  const msg=document.getElementById('loading-msg');
+  const ring=document.querySelector('.sk-ring');
+  if(ring){ring.style.borderColor='var(--border)';ring.style.borderTopColor='#e03050';ring.style.animation='none';}
+  const txt=err?.message||String(err)||'Sin respuesta del servidor';
+  msg.textContent='Error: '+txt;msg.style.color='#e03050';msg.style.animation='none';msg.style.letterSpacing='normal';msg.style.textTransform='none';
+  const existing=document.getElementById('retry-btn');if(existing) existing.remove();
+  const btn=document.createElement('button');btn.id='retry-btn';btn.textContent='↩ Reintentar';
+  btn.style.cssText='margin-top:20px;font-family:"JetBrains Mono",monospace;font-size:11px;padding:7px 18px;border-radius:5px;border:1px solid #e03050;background:transparent;color:#e03050;cursor:pointer;';
+  btn.onclick=()=>location.reload();
+  document.getElementById('loading').appendChild(btn);
+  console.error('[Customily] Error:', txt);
+}
+// Boot: fetch al endpoint JSON — sin google.script.run, sin scriptlets, sin postMessage
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const from=qs.get('from')||'';
+  const to=qs.get('to')||'';
+  let url=_EXEC_URL+'?json=1';
+  if(from) url+='&from='+encodeURIComponent(from);
+  if(to)   url+='&to='+encodeURIComponent(to);
+  fetch(url,{redirect:'follow'})
+    .then(r=>r.json())
+    .then(render)
+    .catch(err=>onError(String(err)));
+})();
+</script>
+</body>
+</html>
