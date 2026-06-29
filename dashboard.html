@@ -2122,9 +2122,23 @@ function _stAcKey(e) {
 }
 
 function filterStampChart(q) {
-  // solo actualiza el autocomplete, no el gráfico (el gráfico lo maneja renderStampChart)
   const clearBtn = document.getElementById('st-chart-clear');
   if (clearBtn) clearBtn.style.display = (q||'').trim() ? 'block' : 'none';
+  if (!_data || !_data.stamps) return;
+  // Si hay pills seleccionados, no pisar la vista multi-stamp
+  if (_stSelected.length > 0) return;
+  const v = (q || '').toLowerCase().trim();
+  const gran = _stGranActive();
+  if (!v) { renderStampChart(); return; }
+  // Agregar todos los stamps que coincidan con la búsqueda
+  const raw = (_data.stamps.rawRows || []).filter(r => r.stamp && r.stamp.toLowerCase().includes(v));
+  const rows = raw.map(r => ({installDate: r.date}));
+  const td = gran === 'daily'  ? _aggByDay(rows)
+           : gran === 'weekly' ? _aggByWeek(rows)
+           : _aggByMonth(rows);
+  if (_ch['c-st-mon']) { _ch['c-st-mon'].destroy(); delete _ch['c-st-mon']; }
+  freshCanvas('c-st-mon');
+  _ch['c-st-mon'] = mkLine('c-st-mon', td.map(r=>r.label), td.map(r=>r.value), '#9b5de5');
 }
 
 function renderStampChart() {
