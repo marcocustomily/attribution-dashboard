@@ -934,6 +934,10 @@ body{
 
   <div class="sec" style="margin-top:8px;">Shopify Keywords
     <div class="sec-acts">
+      <div class="st-search-rel" style="margin-right:8px;">
+        <span class="st-search-ico">🔍</span>
+        <input type="text" class="st-search" id="kw-search" placeholder="Buscar keyword…" oninput="searchKwTable(this.value)" style="width:180px;">
+      </div>
       <div class="gran-tog" style="margin-right:8px;">
         <button class="gran-btn active" id="kw-f-all"     onclick="filterKwTable('all',this)">All</button>
         <button class="gran-btn"        id="kw-f-organic" onclick="filterKwTable('organic',this)">Organic</button>
@@ -1210,6 +1214,8 @@ function reload(from,to){
   destroyAll();clearBodies();
   _stampsTable=[];
   const si=document.getElementById('st-search');if(si)si.value='';
+  const ki=document.getElementById('kw-search');if(ki)ki.value='';
+  _kwSearchQ='';_kwActiveType='all';
   ['c-wk-all','c-wk-paid','c-p-ch','c-p-co','c-p-churn','c-p-avgd','c-p-stamp','c-p-stamp-conv','c-l-ch','c-l-ttc','c-l-co','c-l-rsn','c-r-ttc','c-r-ttcp','c-r-rsn','c-r-ch','c-srf','c-skw','c-st-mon','c-st-top','c-st-plat'].forEach(freshCanvas);
   document.getElementById('loading').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -1626,6 +1632,8 @@ function render(data){
       const tr = document.createElement('tr');
       tr.style.cursor = 'pointer';
       tr.title = 'Ver stores';
+      tr.dataset.kw = String(r.keyword||'').toLowerCase();
+      tr.dataset.type = r.type || '';
       const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
       const _kwIdx = _kwDrillRows.length;
       _kwDrillRows.push(r);
@@ -1716,16 +1724,25 @@ function openTsDrillByIdx(idx, mode) {
   if(!row) return;
   openKwDrill(row, mode);
 }
+var _kwActiveType = 'all';
+var _kwSearchQ = '';
+function _applyKwFilters() {
+  const rows = document.querySelectorAll('#ts-kw-tbl tr');
+  rows.forEach(tr => {
+    const typeOk = _kwActiveType === 'all' || tr.dataset.type === _kwActiveType;
+    const searchOk = !_kwSearchQ || (tr.dataset.kw || '').includes(_kwSearchQ);
+    tr.style.display = (typeOk && searchOk) ? '' : 'none';
+  });
+}
 function filterKwTable(type, btn) {
   document.querySelectorAll('#kw-f-all,#kw-f-organic,#kw-f-cpc').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  const rows = document.querySelectorAll('#ts-kw-tbl tr');
-  rows.forEach(tr => {
-    if(type === 'all') { tr.style.display=''; return; }
-    // type pill is in 2nd cell — check text
-    const pill = tr.cells[1] && tr.cells[1].textContent.trim().toLowerCase();
-    tr.style.display = (pill === type) ? '' : 'none';
-  });
+  _kwActiveType = type;
+  _applyKwFilters();
+}
+function searchKwTable(q) {
+  _kwSearchQ = (q || '').toLowerCase().trim();
+  _applyKwFilters();
 }
 function closeKwDrill() {
   document.getElementById('kw-modal').style.display = 'none';
