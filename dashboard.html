@@ -454,25 +454,22 @@ body{
   width:14px;height:14px;border-radius:50%;
   background:var(--surface-alt);border:1px solid var(--border);
   color:var(--text-3);font-size:9px;font-weight:700;
-  cursor:help;margin-left:5px;position:relative;
+  cursor:help;margin-left:5px;
   font-family:'Inter','Syne',sans-serif;text-transform:none;letter-spacing:0;
   vertical-align:middle;line-height:1;
 }
-.itip:hover,.itip.show{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
-.itip-box{
-  display:none;position:absolute;z-index:80;
-  bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-  width:240px;padding:10px 12px;border-radius:8px;
+.itip:hover,.itip.pinned{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+/* Tooltip global, posicionado por JS (_itipShow/_itipToggle) — así no lo
+   corta el overflow:auto de .tbl-wrap ni el overflow:hidden de .card. */
+.itip-fixed{
+  display:none;position:fixed;z-index:999;
+  max-width:240px;padding:10px 12px;border-radius:8px;
   background:var(--text);color:var(--bg);
   font-size:11.5px;font-weight:400;line-height:1.5;
   letter-spacing:0;text-align:left;text-transform:none;
   box-shadow:var(--shadow-lg);white-space:normal;
 }
-.itip-box::after{
-  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:5px solid transparent;border-top-color:var(--text);
-}
-.itip:hover .itip-box,.itip.show .itip-box{display:block;}
+.itip-fixed.show{display:block;}
 .pv-lbl{font-family:'Inter','Syne',sans-serif;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:6px;}
 .pv-select{
   font-family:'Inter','Syne',sans-serif;font-size:13px;
@@ -689,7 +686,7 @@ body{
     <div class="card" style="--card-accent:var(--accent);--card-color:var(--accent)"><div class="card-lbl">Total Installs <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-total" onclick="openFunnelDrill('all')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-unique">—</div></div>
     <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">Paid Merchants <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-paid" onclick="openFunnelDrill('paid')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-conv">—</div></div>
     <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Currently Active <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span></div><div class="card-val" id="f-active" onclick="openFunnelDrill('active')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub">installed &amp; active</div></div>
-    <div class="card" style="--card-accent:var(--red);--card-color:var(--red)"><div class="card-lbl">Dropped <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span><span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Basado únicamente en desinstalación de la app. No detecta merchants que bajaron a plan gratis o se les rechazó el pago pero siguen con la app instalada — ese revenue perdido no se ve acá.</span></span></div><div class="card-val" id="f-churned" onclick="openFunnelDrill('churned')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-churnrate">—</div></div>
+    <div class="card" style="--card-accent:var(--red);--card-color:var(--red)"><div class="card-lbl">Dropped <span style="font-size:10px;opacity:.5;font-weight:400;">· click para detalle</span><span class="itip" data-tip="Basado únicamente en desinstalación de la app. No detecta merchants que bajaron a plan gratis o se les rechazó el pago pero siguen con la app instalada — ese revenue perdido no se ve acá." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></div><div class="card-val" id="f-churned" onclick="openFunnelDrill('churned')" style="cursor:pointer;" title="Ver detalle">—</div><div class="card-sub" id="f-churnrate">—</div></div>
   </div>
   <div class="sec"><span class="sec-title">Install Quality</span></div>
   <div class="cc" style="margin-bottom:24px;padding:22px;"><div id="quality-bars"></div></div>
@@ -714,7 +711,7 @@ body{
         <th class="num" onclick="srt('ch-tbl',3)">Act%</th>
         <th class="num" onclick="srt('ch-tbl',4)">Paid Merchants</th>
         <th class="num" onclick="srt('ch-tbl',5)">Conv%</th>
-        <th class="num" onclick="srt('ch-tbl',6)">Revenue Total (USD)<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Suma de pagos de suscripción cuya fecha cae dentro del rango elegido arriba (7D/30D/MTD/YTD/Custom) — no es el total histórico del merchant. Cambia si movés el rango de fechas.</span></span></th>
+        <th class="num" onclick="srt('ch-tbl',6)">Revenue Total (USD)<span class="itip" data-tip="Suma de pagos de suscripción cuya fecha cae dentro del rango elegido arriba (7D/30D/MTD/YTD/Custom) — no es el total histórico del merchant. Cambia si movés el rango de fechas." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
         <th style="min-width:100px;">Rate</th>
       </tr></thead>
       <tbody id="ch-tbody"></tbody>
@@ -778,9 +775,9 @@ body{
         <th class="num" onclick="srt('p-stamp-tbl',4)">Conv%</th>
         <th class="num" onclick="srt('p-stamp-tbl',5)">Active</th>
         <th class="num" onclick="srt('p-stamp-tbl',6)">Churned</th>
-        <th class="num" onclick="srt('p-stamp-tbl',7)">Churn%<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Basado únicamente en si la app fue desinstalada. Downgrades a plan gratis o pagos rechazados con la app aún instalada no cuentan como churn acá.</span></span></th>
+        <th class="num" onclick="srt('p-stamp-tbl',7)">Churn%<span class="itip" data-tip="Basado únicamente en si la app fue desinstalada. Downgrades a plan gratis o pagos rechazados con la app aún instalada no cuentan como churn acá." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
         <th class="num" onclick="srt('p-stamp-tbl',8)">Avg Days</th>
-        <th class="num" onclick="srt('p-stamp-tbl',9)">Revenue Total<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Suma de pagos de suscripción dentro del rango de fechas elegido arriba, no el total histórico.</span></span></th>
+        <th class="num" onclick="srt('p-stamp-tbl',9)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción dentro del rango de fechas elegido arriba, no el total histórico." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       </tr></thead>
       <tbody id="p-stamp-tbody"></tbody>
     </table></div>
@@ -927,9 +924,9 @@ body{
       <th class="num" onclick="srt('st-tbl-el',3)" style="color:var(--cyan)">Trial</th>
       <th class="num" onclick="srt('st-tbl-el',4)">Paid</th>
       <th class="num" onclick="srt('st-tbl-el',5)">Conv%</th>
-      <th class="num" onclick="srt('st-tbl-el',6)">Churn%<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Basado únicamente en si la app fue desinstalada. Un merchant que bajó a plan gratis o al que se le rechazó el pago pero sigue con la app instalada NO cuenta como churn acá.</span></span></th>
+      <th class="num" onclick="srt('st-tbl-el',6)">Churn%<span class="itip" data-tip="Basado únicamente en si la app fue desinstalada. Un merchant que bajó a plan gratis o al que se le rechazó el pago pero sigue con la app instalada NO cuenta como churn acá." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       <th class="num" onclick="srt('st-tbl-el',7)">Avg Days</th>
-      <th class="num" onclick="srt('st-tbl-el',8)">Revenue Total<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Suma de pagos de suscripción dentro del rango de fechas elegido arriba, no el total histórico.</span></span></th>
+      <th class="num" onclick="srt('st-tbl-el',8)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción dentro del rango de fechas elegido arriba, no el total histórico." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       <th class="num" onclick="srt('st-tbl-el',9)">Shopify</th>
       <th class="num" onclick="srt('st-tbl-el',10)">Etsy</th>
       <th class="num" onclick="srt('st-tbl-el',11)">Woo</th>
@@ -960,7 +957,7 @@ body{
         <th class="num" onclick="srt('ts-tbl-el',2)">%</th>
         <th class="num" onclick="srt('ts-tbl-el',3)">Trial</th>
         <th class="num" onclick="srt('ts-tbl-el',4)">Trial%</th>
-        <th class="num" onclick="srt('ts-tbl-el',5)">Revenue Total<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Suma de pagos de suscripción de los shops de este canal, dentro del rango de fechas elegido arriba.</span></span></th>
+        <th class="num" onclick="srt('ts-tbl-el',5)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los shops de este canal, dentro del rango de fechas elegido arriba." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       </tr></thead>
       <tbody id="ts-tbl"></tbody>
     </table></div>
@@ -991,7 +988,7 @@ body{
         <th class="num" onclick="srt('ts-kw-el',2)">Installs</th>
         <th class="num" onclick="srt('ts-kw-el',3)">Trial</th>
         <th class="num" onclick="srt('ts-kw-el',4)">Trial%</th>
-        <th class="num" onclick="srt('ts-kw-el',5)">Revenue Total<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Suma de pagos de suscripción de los shops que llegaron por esta keyword, dentro del rango de fechas elegido arriba.</span></span></th>
+        <th class="num" onclick="srt('ts-kw-el',5)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los shops que llegaron por esta keyword, dentro del rango de fechas elegido arriba." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       </tr></thead>
       <tbody id="ts-kw-tbl"></tbody>
     </table></div>
@@ -1003,7 +1000,7 @@ body{
 
 <!-- PIVOT -->
 <div class="page" id="page-pivot">
-  <div class="sec"><span class="sec-title">Pivot — Cruces personalizados<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">Los installs/paid se cuentan por fecha de instalación. El revenue de la métrica "Revenue Total" es del rango de fechas elegido arriba (pagos, no lifetime).</span></span></span>
+  <div class="sec"><span class="sec-title">Pivot — Cruces personalizados<span class="itip" data-tip="Los installs/paid se cuentan por fecha de instalación. El revenue de la métrica &quot;Revenue Total&quot; es del rango de fechas elegido arriba (pagos, no lifetime)." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></span>
     <div class="sec-acts"><button class="sec-act" onclick="expTbl('pv-tbody','pivot')">↓ CSV</button></div>
   </div>
   <div class="cc" style="margin-bottom:24px;">
@@ -1121,6 +1118,7 @@ body{
   <div id="fts">—</div>
 </div>
 <div id="toast"></div>
+<div id="itip-global" class="itip-fixed"></div>
 <div id="smod">
   <div class="mbox">
     <div class="mttl">Keyboard Shortcuts <button class="mcls" onclick="toggleSh()">✕</button></div>
@@ -1610,8 +1608,49 @@ function cpill(v){const n=parseFloat(v);return`<span class="pill ${n>=30?'p-g':n
 // Uso: agregar dentro de un <th> o label: `Revenue Total${itip('texto explicativo')}`.
 function itip(text){
   const t=String(text).replace(/"/g,'&quot;');
-  return `<span class="itip" onclick="event.stopPropagation();this.classList.toggle('show')">?<span class="itip-box">${t}</span></span>`;
+  return `<span class="itip" data-tip="${t}" onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span>`;
 }
+// Tooltip global posicionado con getBoundingClientRect — evita que el overflow
+// de tablas/cards lo corte (position:fixed escapa de esos contenedores).
+let _itipPinnedEl = null;
+function _itipPosition(el){
+  const box=document.getElementById('itip-global'); if(!box) return;
+  const r=el.getBoundingClientRect();
+  const bw=box.offsetWidth, bh=box.offsetHeight;
+  let top=r.top-bh-8, left=r.left+r.width/2-bw/2;
+  if(top<8) top=r.bottom+8;                                    // si no entra arriba, abre abajo
+  if(left<8) left=8;
+  if(left+bw>window.innerWidth-8) left=window.innerWidth-bw-8;
+  box.style.top=top+'px'; box.style.left=left+'px';
+}
+function _itipShow(el){
+  const box=document.getElementById('itip-global'); if(!box) return;
+  box.textContent=el.dataset.tip||'';
+  box.classList.add('show');
+  _itipPosition(el);
+}
+function _itipHide(){
+  if(_itipPinnedEl) return;   // no ocultar si quedó fijado por click/tap
+  const box=document.getElementById('itip-global'); if(box) box.classList.remove('show');
+}
+function _itipToggle(el){
+  const box=document.getElementById('itip-global'); if(!box) return;
+  if(_itipPinnedEl===el){
+    _itipPinnedEl=null; el.classList.remove('pinned'); box.classList.remove('show'); return;
+  }
+  if(_itipPinnedEl) _itipPinnedEl.classList.remove('pinned');
+  _itipPinnedEl=el; el.classList.add('pinned');
+  box.textContent=el.dataset.tip||'';
+  box.classList.add('show');
+  _itipPosition(el);
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.itip')){
+    if(_itipPinnedEl) _itipPinnedEl.classList.remove('pinned');
+    _itipPinnedEl=null;
+    const box=document.getElementById('itip-global'); if(box) box.classList.remove('show');
+  }
+});
 // Revenue lifetime del dominio + cantidad de pagos, para dejar claro que
 // no es un cobro único aislado sino un acumulado (evita confusión cuando
 // daysActive de la fila es bajo pero el revenue histórico es alto).
