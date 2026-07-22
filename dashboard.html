@@ -681,6 +681,7 @@ body{
         <th class="num" onclick="srt('ch-tbl',3)">Act%</th>
         <th class="num" onclick="srt('ch-tbl',4)">Paid Merchants</th>
         <th class="num" onclick="srt('ch-tbl',5)">Conv%</th>
+        <th class="num" onclick="srt('ch-tbl',6)">Revenue Total (USD)</th>
         <th style="min-width:100px;">Rate</th>
       </tr></thead>
       <tbody id="ch-tbody"></tbody>
@@ -746,6 +747,7 @@ body{
         <th class="num" onclick="srt('p-stamp-tbl',6)">Churned</th>
         <th class="num" onclick="srt('p-stamp-tbl',7)">Churn%</th>
         <th class="num" onclick="srt('p-stamp-tbl',8)">Avg Days</th>
+        <th class="num" onclick="srt('p-stamp-tbl',9)">Revenue Total</th>
       </tr></thead>
       <tbody id="p-stamp-tbody"></tbody>
     </table></div>
@@ -894,10 +896,11 @@ body{
       <th class="num" onclick="srt('st-tbl-el',5)">Conv%</th>
       <th class="num" onclick="srt('st-tbl-el',6)">Churn%</th>
       <th class="num" onclick="srt('st-tbl-el',7)">Avg Days</th>
-      <th class="num" onclick="srt('st-tbl-el',8)">Shopify</th>
-      <th class="num" onclick="srt('st-tbl-el',9)">Etsy</th>
-      <th class="num" onclick="srt('st-tbl-el',10)">Woo</th>
-      <th class="num" onclick="srt('st-tbl-el',11)">Other</th>
+      <th class="num" onclick="srt('st-tbl-el',8)">Revenue Total</th>
+      <th class="num" onclick="srt('st-tbl-el',9)">Shopify</th>
+      <th class="num" onclick="srt('st-tbl-el',10)">Etsy</th>
+      <th class="num" onclick="srt('st-tbl-el',11)">Woo</th>
+      <th class="num" onclick="srt('st-tbl-el',12)">Other</th>
     </tr></thead>
     <tbody id="st-tbl"></tbody>
   </table></div></div>
@@ -1454,7 +1457,8 @@ function render(data){
     const sc=r.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const instCell=r.installs>0?`<span class="drill-link" onclick="openChannelDrill('${sc}','installs')">${Number(r.installs).toLocaleString()}</span>`:Number(r.installs).toLocaleString();
     const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openChannelDrill('${sc}','paid')">${Number(r.paid).toLocaleString()}</span>`:`<span style="color:var(--green)">${Number(r.paid).toLocaleString()}</span>`;
-    tr.innerHTML=`<td>${r.label}</td><td class="num">${instCell}</td><td class="num" style="color:var(--cyan)">${Number(r.activated).toLocaleString()}</td><td class="num">${cpill(r.activationRate)}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td><div class="conv-bar"><div class="conv-fill" style="width:${Math.min(parseFloat(r.convRate),100)}%"></div></div></td>`;
+    const revFmt=Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    tr.innerHTML=`<td>${r.label}</td><td class="num">${instCell}</td><td class="num" style="color:var(--cyan)">${Number(r.activated).toLocaleString()}</td><td class="num">${cpill(r.activationRate)}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num" style="color:var(--green)">$${revFmt}</td><td><div class="conv-bar"><div class="conv-fill" style="width:${Math.min(parseFloat(r.convRate),100)}%"></div></div></td>`;
     cht.appendChild(tr);
   });
   document.getElementById('ch-cnt').textContent=funnel.byChannel.length+' canales';
@@ -1510,7 +1514,8 @@ function render(data){
           `<td class="num" style="color:var(--cyan)">${Number(r.active).toLocaleString()}</td>`+
           `<td class="num" style="color:var(--red)">${Number(r.churned).toLocaleString()}</td>`+
           `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
-          `<td class="num">${r.avgDays}d</td>`;
+          `<td class="num">${r.avgDays}d</td>`+
+          `<td class="num" style="color:var(--green)">$${Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
         psb.appendChild(tr);
       });
     }
@@ -1848,7 +1853,7 @@ function openPaidDrill(metric) {
     active:  r=>r.status==='Active',
     churned: r=>r.status==='Churned'
   };
-  const cols = ['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay'];
+  const cols = ['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Revenue Total'];
   const renderer = r => {
     const sc = r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
     return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
@@ -1857,7 +1862,8 @@ function openPaidDrill(metric) {
       `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
       `<td class="num">${r.daysActive||0}d</td>`+
       `<td class="dim">${r.installDate||'—'}</td>`+
-      `<td class="dim">${r.firstPayDate||'—'}</td>`;
+      `<td class="dim">${r.firstPayDate||'—'}</td>`+
+      `<td class="num" style="color:var(--green)">$${Number(r.totalRevenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
   };
   _openGenericDrill('Paid Merchants', labels[metric]||metric, _paidDetails, filters[metric], cols, renderer);
 }
@@ -1884,10 +1890,11 @@ function _adsRowRenderer(r){
     `<td class="num">${r.daysActive||0}d</td>`+
     `<td class="dim">${r.installDate||'—'}</td>`+
     `<td class="dim">${r.firstPayDate||'—'}</td>`+
+    `<td class="num" style="color:var(--green)">${r.totalRevenue?'$'+Number(r.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>`+
     `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${kw}">${kw||'—'}</td>`;
 }
 
-const _ADS_COLS=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Keyword'];
+const _ADS_COLS=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Revenue Total','Keyword'];
 
 function openCampaignDrill(campaign, type){
   const isPaid   = type==='paid';
@@ -1913,7 +1920,7 @@ function openChannelDrill(channel, type){
   const isPaid=type==='paid';
   const base=isPaid?_paidDetails:_funnelDetails;
   const filter=r=>r.channel===channel&&(isPaid?r.paid:true);
-  const cols=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Campaign'];
+  const cols=['Domain','Canal','País','Estado','Días Activo','Install Date','First Pay','Revenue Total','Campaign'];
   const renderer=r=>{
     const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
     return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
@@ -1922,6 +1929,7 @@ function openChannelDrill(channel, type){
       `<td class="num">${r.daysActive||0}d</td>`+
       `<td class="dim">${r.installDate||'—'}</td>`+
       `<td class="dim">${r.firstPayDate||'—'}</td>`+
+      `<td class="num" style="color:var(--green)">${r.totalRevenue?'$'+Number(r.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>`+
       `<td class="dim" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.campaign||''}">${r.campaign||'—'}</td>`;
   };
   _openGenericDrill('Channel',(isPaid?'Paid Mrchs · ':'Installs · ')+channel, base, filter, cols, renderer);
@@ -1977,6 +1985,7 @@ function renderStTable(rows) {
       `<td class="num"><span class="pill ${cvCls}">${r.convRate}%</span></td>`+
       `<td class="num"><span class="pill ${chCls}">${r.churnRate}%</span></td>`+
       `<td class="num">${r.avgDays}d</td>`+
+      `<td class="num" style="color:var(--green)">$${Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`+
       `<td class="num">${r.shopify.toLocaleString()}</td>`+
       `<td class="num">${r.etsy.toLocaleString()}</td>`+
       `<td class="num">${r.woo.toLocaleString()}</td>`+
@@ -2010,7 +2019,7 @@ function openStampTrialDrill(stamp) {
 
 function openStampDrill(stamp) {
   const rows = _paidDetails.filter(r => r.stamp === stamp);
-  const cols = ['Domain', 'Canal', 'País', 'Estado', 'Días Activo', 'Install Date', 'First Pay'];
+  const cols = ['Domain', 'Canal', 'País', 'Estado', 'Días Activo', 'Install Date', 'First Pay', 'Revenue Total'];
   const renderer = r => {
     const sc = r.status === 'Active' ? 'var(--green)' : r.status === 'Churned' ? 'var(--red)' : 'var(--text-3)';
     return `<td><a href="https://${r.domain}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.domain}</a></td>`+
@@ -2019,7 +2028,8 @@ function openStampDrill(stamp) {
       `<td style="color:${sc};font-weight:500;">${r.status||'—'}</td>`+
       `<td class="num">${r.daysActive||0}d</td>`+
       `<td class="dim">${r.installDate||'—'}</td>`+
-      `<td class="dim">${r.firstPayDate||'—'}</td>`;
+      `<td class="dim">${r.firstPayDate||'—'}</td>`+
+      `<td class="num" style="color:var(--green)">${r.totalRevenue?'$'+Number(r.totalRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>`;
   };
   _openGenericDrill(stamp, 'Paid Merchants · Stamp', rows, null, cols, renderer);
 }
