@@ -117,6 +117,14 @@ body{
   min-width:300px;animation:fadeIn .15s ease;
 }
 .cr-pop.show{display:block;}
+.cr-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border-subtle);}
+.cr-quick-btn{
+  font-family:'Inter','Syne',sans-serif;font-size:11.5px;font-weight:500;
+  padding:6px 10px;border-radius:100px;
+  border:1px solid var(--border);background:var(--surface-alt);color:var(--text-2);
+  cursor:pointer;transition:all .15s;
+}
+.cr-quick-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
 .cr-row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
 .cr-lbl{font-family:'Inter','Syne',sans-serif;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;}
 .cr-actions{display:flex;gap:8px;margin-top:4px;}
@@ -626,8 +634,8 @@ body{
     <div class="presets">
       <button class="preset-btn" onclick="setPreset('7d',this)">7D</button>
       <button class="preset-btn" onclick="setPreset('30d',this)">30D</button>
-      <button class="preset-btn" onclick="setPreset('mtd',this)">MTD</button>
-      <button class="preset-btn active" onclick="setPreset('ytd',this)">YTD</button>
+      <button class="preset-btn active" onclick="setPreset('mtd',this)">MTD</button>
+      <button class="preset-btn" onclick="setPreset('ytd',this)">YTD</button>
       <button class="preset-btn" onclick="setPreset('custom',this)">Custom</button>
     </div>
     <div class="custom-range" id="crw">
@@ -636,13 +644,19 @@ body{
         <span id="cr-display">Seleccionar meses</span>
       </button>
       <div class="cr-pop" id="cr-pop">
+        <div class="cr-quick">
+          <button class="cr-quick-btn" onclick="quickRange('last_month')">Mes pasado</button>
+          <button class="cr-quick-btn" onclick="quickRange('90d')">Últimos 90 días</button>
+          <button class="cr-quick-btn" onclick="quickRange('quarter')">Este trimestre</button>
+          <button class="cr-quick-btn" onclick="quickRange('all')">Todo el historial</button>
+        </div>
         <div class="cr-row">
           <label class="cr-lbl">Desde</label>
-          <input type="date" id="dt-from" class="dt-input" value="2025-01-01">
+          <input type="date" id="dt-from" class="dt-input" value="2025-01-01" onclick="this.showPicker&&this.showPicker()">
         </div>
         <div class="cr-row">
           <label class="cr-lbl">Hasta</label>
-          <input type="date" id="dt-to" class="dt-input">
+          <input type="date" id="dt-to" class="dt-input" onclick="this.showPicker&&this.showPicker()">
         </div>
         <div class="cr-actions">
           <button class="d-cancel" onclick="document.getElementById('cr-pop').classList.remove('show')">Cancelar</button>
@@ -1295,6 +1309,26 @@ function setPreset(p,btn){
     return;
   }
   reload(fmt(from),fmt(t));
+}
+function quickRange(kind){
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const t=new Date();
+  let from, to=t;
+  if(kind==='last_month'){
+    from=new Date(t.getFullYear(),t.getMonth()-1,1);
+    to=new Date(t.getFullYear(),t.getMonth(),0);        // último día del mes pasado
+  } else if(kind==='90d'){
+    from=new Date(t);from.setDate(from.getDate()-90);
+  } else if(kind==='quarter'){
+    const qStartMonth=Math.floor(t.getMonth()/3)*3;
+    from=new Date(t.getFullYear(),qStartMonth,1);
+  } else if(kind==='all'){
+    from=new Date('2025-01-01T00:00:00');
+  } else return;
+  document.getElementById('dt-from').value=fmt(from);
+  document.getElementById('dt-to').value=fmt(to);
+  applyCustom();
 }
 function applyCustom(){
   document.getElementById('cr-pop').classList.remove('show');
@@ -2180,9 +2214,12 @@ function openCampaignDrill(campaign, type){
 
 function openKeywordDrill(keyword, type){
   const isPaid=type==='paid';
+  // Ojo: _paidDetails ya viene filtrado solo a merchants pagos y sus objetos
+  // no tienen el campo `paid` (a diferencia de _funnelDetails) — filtrar acá
+  // también por r.paid siempre daba 0 resultados. Con `base` ya alcanza.
   const base=isPaid?_paidDetails:_funnelDetails;
   const kw=keyword.toLowerCase().trim();
-  const filter=r=>String(r.keyword||'').toLowerCase().trim()===kw&&(isPaid?r.paid:true);
+  const filter=r=>String(r.keyword||'').toLowerCase().trim()===kw;
   _openGenericDrill('Keyword',(isPaid?'Paid Mrchs · ':'Installs · ')+keyword, base, filter, _ADS_COLS, _adsRowRenderer);
 }
 
@@ -2510,8 +2547,19 @@ function onError(err){
 // Boot: fetch al endpoint JSON — sin google.script.run, sin scriptlets, sin postMessage
 (function(){
   const qs=new URLSearchParams(location.search);
-  const from=qs.get('from')||'';
-  const to=qs.get('to')||'';
+  let from=qs.get('from')||'';
+  let to=qs.get('to')||'';
+  // Default: mes en curso (MTD) si no vino nada por querystring.
+  if(!from && !to){
+    const pad=n=>String(n).padStart(2,'0');
+    const t=new Date();
+    from=`${t.getFullYear()}-${pad(t.getMonth()+1)}-01`;
+    to=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+    // Marcar el botón MTD como activo (en vez de YTD) para que el UI matchee el rango real.
+    document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+    const mtdBtn=[...document.querySelectorAll('.preset-btn')].find(b=>/onclick="setPreset\('mtd'/.test(b.getAttribute('onclick')||''));
+    if(mtdBtn) mtdBtn.classList.add('active');
+  }
   let url=_EXEC_URL+'?json=1';
   if(from) url+='&from='+encodeURIComponent(from);
   if(to)   url+='&to='+encodeURIComponent(to);
