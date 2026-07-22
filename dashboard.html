@@ -449,6 +449,14 @@ body{
   padding:3px 8px;border-radius:100px;
   background:var(--surface-alt);color:var(--text-3);letter-spacing:.3px;border:1px solid var(--border);
 }
+.pv-lbl{font-family:'Inter','Syne',sans-serif;font-size:11px;font-weight:500;color:var(--text-3);margin-bottom:6px;}
+.pv-select{
+  font-family:'Inter','Syne',sans-serif;font-size:13px;
+  padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);cursor:pointer;min-width:170px;
+}
+.pv-select:hover{border-color:var(--border-strong);}
+.pv-select:focus{outline:none;border-color:var(--accent);}
 .gran-tog{display:inline-flex;gap:1px;background:var(--surface-alt);border:1px solid var(--border);border-radius:7px;padding:2px;}
 .gran-btn{
   font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
@@ -642,6 +650,7 @@ body{
   <div class="tab t-ret"    onclick="switchTab('retention',this)">Retention <span class="tab-bdg" id="tb4">—</span></div>
   <div class="tab t-stamps" onclick="switchTab('stamps',this)">Stamps <span class="tab-bdg" id="tb5">—</span></div>
   <div class="tab t-traffic" onclick="switchTab('traffic',this)">Traffic Sources <span class="tab-bdg" id="tb6">—</span></div>
+  <div class="tab t-pivot" onclick="switchTab('pivot',this)">Pivot <span class="tab-bdg" id="tb7">—</span></div>
 </div>
 <div id="alerts-bar"><div class="al-inner" id="al-inner"></div></div>
 
@@ -966,6 +975,63 @@ body{
   </div>
 </div>
 
+<!-- PIVOT -->
+<div class="page" id="page-pivot">
+  <div class="sec"><span class="sec-title">Pivot — Cruces personalizados</span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('pv-tbody','pivot')">↓ CSV</button></div>
+  </div>
+  <div class="cc" style="margin-bottom:24px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <div class="pv-lbl">Agrupar por</div>
+        <select id="pv-dim1" class="pv-select" onchange="renderPivot()">
+          <option value="channel">Canal</option>
+          <option value="stamp">Stamp</option>
+          <option value="campaign">Campaña</option>
+          <option value="keyword">Keyword</option>
+          <option value="country">País</option>
+          <option value="month">Mes de instalación</option>
+          <option value="status">Estado</option>
+        </select>
+      </div>
+      <div>
+        <div class="pv-lbl">Desglosar por (opcional)</div>
+        <select id="pv-dim2" class="pv-select" onchange="renderPivot()">
+          <option value="">— Ninguno —</option>
+          <option value="channel">Canal</option>
+          <option value="stamp">Stamp</option>
+          <option value="campaign">Campaña</option>
+          <option value="keyword">Keyword</option>
+          <option value="country">País</option>
+          <option value="month">Mes de instalación</option>
+          <option value="status">Estado</option>
+        </select>
+      </div>
+      <div>
+        <div class="pv-lbl">Métrica</div>
+        <select id="pv-metric" class="pv-select" onchange="renderPivot()">
+          <option value="installs">Installs</option>
+          <option value="paid">Paid Merchants</option>
+          <option value="revenue">Revenue Total (USD)</option>
+          <option value="convRate">Conv% (installs→paid)</option>
+          <option value="churnRate">Churn% (paid→churned)</option>
+          <option value="avgDays">Avg Days Active</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);" id="pv-cnt">—</div>
+    </div>
+  </div>
+  <div class="cc" id="pv-cc">
+    <div class="tbl-wrap"><table class="tbl" id="pv-tbl">
+      <thead id="pv-thead"><tr></tr></thead>
+      <tbody id="pv-tbody"></tbody>
+    </table></div>
+  </div>
+  <div id="pv-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px;">
+    No hay datos para esta combinación de filtros.
+  </div>
+</div>
+
 <!-- TRAFFIC KEYWORD DRILL MODAL -->
 <div id="kw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow-y:auto;" onclick="if(event.target===this)closeKwDrill()">
   <div style="background:var(--surface);border-radius:14px;max-width:680px;margin:60px auto;padding:28px;box-shadow:var(--shadow-lg);">
@@ -1178,8 +1244,8 @@ function cv(el){
 function toggleSh(){document.getElementById('smod').classList.toggle('show');}
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
-  const ts=['funnel','paid','lost','ads','retention','stamps','traffic'];
-  if(e.key>='1'&&e.key<='7')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
+  const ts=['funnel','paid','lost','ads','retention','stamps','traffic','pivot'];
+  if(e.key>='1'&&e.key<='8')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
   if(e.key==='r'||e.key==='R') manualRefresh();
   if(e.key==='Escape') document.getElementById('smod').classList.remove('show');
 });
@@ -1235,7 +1301,7 @@ function manualRefresh(){
   const a=document.querySelector('.preset-btn.active');if(a)a.click();
 }
 function destroyAll(){Object.values(_ch).forEach(c=>{try{c.destroy();}catch(e){}});_ch={};}
-function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
+function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody','pv-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
 function freshCanvas(id){
   const o=document.getElementById(id);if(!o) return null;
   const n=document.createElement('canvas');n.id=id;
@@ -1266,7 +1332,114 @@ function switchTab(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(el) el.classList.add('active');
+  if(name==='pivot') renderPivot();
   scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── PIVOT ────────────────────────────────────────────────
+const _PV_LABELS={channel:'Canal',stamp:'Stamp',campaign:'Campaña',keyword:'Keyword',country:'País',month:'Mes',status:'Estado'};
+const _PV_METRIC_LABELS={installs:'Installs',paid:'Paid Merchants',revenue:'Revenue Total (USD)',convRate:'Conv%',churnRate:'Churn%',avgDays:'Avg Days'};
+const _PV_TOPN_ROWS=200, _PV_TOPN_COLS=20;
+
+function _pvDim(r,dim){
+  if(dim==='month') return r.installDate ? String(r.installDate).substring(0,7) : '(sin fecha)';
+  const v=r[dim];
+  return (v===undefined||v===null||v==='') ? '(sin dato)' : String(v);
+}
+
+function renderPivot(){
+  const dim1El=document.getElementById('pv-dim1'), dim2El=document.getElementById('pv-dim2'), metricEl=document.getElementById('pv-metric');
+  if(!dim1El||!dim2El||!metricEl) return;
+  const dim1=dim1El.value, dim2=dim2El.value, metric=metricEl.value;
+  const rows=_funnelDetails||[];
+  const thead=document.getElementById('pv-thead'), tbody=document.getElementById('pv-tbody');
+  const cnt=document.getElementById('pv-cnt'), empty=document.getElementById('pv-empty'), cc=document.getElementById('pv-cc');
+
+  if(!rows.length){
+    thead.innerHTML=''; tbody.innerHTML='';
+    if(empty) empty.style.display='block';
+    if(cc) cc.style.display='none';
+    if(cnt) cnt.textContent='—';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  if(cc) cc.style.display='';
+
+  // Si dim2 tiene mucha cardinalidad, nos quedamos con las top N columnas y el resto va a "Otros"
+  let topK2=null;
+  if(dim2){
+    const k2Totals={};
+    rows.forEach(r=>{ const k=_pvDim(r,dim2); k2Totals[k]=(k2Totals[k]||0)+1; });
+    topK2=new Set(Object.entries(k2Totals).sort((a,b)=>b[1]-a[1]).slice(0,_PV_TOPN_COLS).map(e=>e[0]));
+  }
+
+  const groups={};
+  rows.forEach(r=>{
+    const k1=_pvDim(r,dim1);
+    let k2='_';
+    if(dim2){ k2=_pvDim(r,dim2); if(!topK2.has(k2)) k2='Otros'; }
+    if(!groups[k1]) groups[k1]={};
+    if(!groups[k1][k2]) groups[k1][k2]={installs:0,paid:0,churned:0,daysSum:0,revenue:0};
+    const g=groups[k1][k2];
+    g.installs++;
+    if(r.paid) g.paid++;
+    if(r.status==='Churned') g.churned++;
+    g.daysSum+=Number(r.daysActive)||0;
+    g.revenue+=Number(r.totalRevenue)||0;
+  });
+
+  function metricVal(g){
+    if(!g) return (metric==='convRate'||metric==='churnRate'||metric==='avgDays') ? null : 0;
+    switch(metric){
+      case 'installs':  return g.installs;
+      case 'paid':      return g.paid;
+      case 'revenue':   return g.revenue;
+      case 'convRate':  return g.installs>0 ? (g.paid/g.installs*100) : null;
+      case 'churnRate': return g.paid>0 ? (g.churned/g.paid*100) : null;
+      case 'avgDays':   return g.installs>0 ? (g.daysSum/g.installs) : null;
+      default: return 0;
+    }
+  }
+  function fmtVal(v){
+    if(v===null||v===undefined) return '—';
+    if(metric==='revenue') return '$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(metric==='convRate'||metric==='churnRate') return Number(v).toFixed(1)+'%';
+    if(metric==='avgDays') return Number(v).toFixed(1)+'d';
+    return Number(v).toLocaleString();
+  }
+  function groupTotal(k1){
+    return Object.values(groups[k1]).reduce((s,g)=>s+g.installs,0);
+  }
+
+  let k1List=Object.keys(groups).sort((a,b)=>groupTotal(b)-groupTotal(a));
+  const truncated=k1List.length>_PV_TOPN_ROWS;
+  k1List=k1List.slice(0,_PV_TOPN_ROWS);
+
+  if(!dim2){
+    thead.innerHTML=`<tr><th onclick="srt('pv-tbl',0)">${_PV_LABELS[dim1]||dim1}</th><th class="num" onclick="srt('pv-tbl',1)">${_PV_METRIC_LABELS[metric]||metric}</th></tr>`;
+    tbody.innerHTML='';
+    k1List.forEach(k1=>{
+      const v=metricVal(groups[k1]['_']);
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${k1}</td><td class="num" style="color:var(--green);font-weight:600;">${fmtVal(v)}</td>`;
+      tbody.appendChild(tr);
+    });
+    if(cnt) cnt.textContent=k1List.length+' filas'+(truncated?' (top '+_PV_TOPN_ROWS+')':'');
+  }else{
+    const k2List=[...new Set(rows.map(r=>{const k=_pvDim(r,dim2);return topK2.has(k)?k:'Otros';}))].sort((a,b)=>a==='Otros'?1:b==='Otros'?-1:a.localeCompare(b));
+    let headHtml=`<th onclick="srt('pv-tbl',0)">${_PV_LABELS[dim1]||dim1}</th>`;
+    k2List.forEach((k2,i)=>{ headHtml+=`<th class="num" onclick="srt('pv-tbl',${i+1})">${k2}</th>`; });
+    thead.innerHTML=`<tr>${headHtml}</tr>`;
+    tbody.innerHTML='';
+    k1List.forEach(k1=>{
+      let rowHtml=`<td>${k1}</td>`;
+      k2List.forEach(k2=>{ rowHtml+=`<td class="num">${fmtVal(metricVal(groups[k1][k2]))}</td>`; });
+      const tr=document.createElement('tr');
+      tr.innerHTML=rowHtml;
+      tbody.appendChild(tr);
+    });
+    if(cnt) cnt.textContent=k1List.length+' filas × '+k2List.length+' columnas'+(truncated?' (top '+_PV_TOPN_ROWS+' filas)':'');
+  }
 }
 
 // ── TABLE SORT & EXPORT ──────────────────────────────────
@@ -1472,6 +1645,11 @@ function render(data){
   // Store details for drill-down
   _funnelDetails = funnel.details || [];
   _paidDetails   = paid.details   || [];
+
+  // Pivot tab
+  const tb7 = document.getElementById('tb7');
+  if (tb7) tb7.textContent = _funnelDetails.length.toLocaleString();
+  renderPivot();
 
   // PAID TAB
   document.getElementById('p-total').textContent=paid.total.toLocaleString();
