@@ -845,6 +845,8 @@ body{
       <th class="num" onclick="srt('camp-tbl',9)">CPA</th>
       <th class="num" onclick="srt('camp-tbl',10)">Drop%</th>
       <th class="num" onclick="srt('camp-tbl',11)">Avg Days</th>
+      <th class="num" onclick="srt('camp-tbl',12)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los merchants atribuidos a esta campaña, dentro del rango de fechas elegido arriba (no el histórico completo)." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
+      <th class="num" onclick="srt('camp-tbl',13)">ROAS<span class="itip" data-tip="Revenue Total del período ÷ Spend del período. Cuánto revenue generó cada dólar invertido en esta campaña." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
     </tr></thead>
     <tbody id="a-camp"></tbody>
   </table></div></div>
@@ -861,6 +863,8 @@ body{
       <th class="num" onclick="srt('kw-ads-tbl',7)">CPI</th>
       <th class="num" onclick="srt('kw-ads-tbl',8)">CPA</th>
       <th class="num" onclick="srt('kw-ads-tbl',9)">Drop%</th>
+      <th class="num" onclick="srt('kw-ads-tbl',10)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los merchants atribuidos a esta keyword, dentro del rango de fechas elegido arriba (no el histórico completo)." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
+      <th class="num" onclick="srt('kw-ads-tbl',11)">ROAS<span class="itip" data-tip="Revenue Total del período ÷ Spend del período." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
     </tr></thead>
     <tbody id="a-kw"></tbody>
   </table></div></div>
@@ -956,7 +960,15 @@ body{
 <!-- TRAFFIC SOURCES -->
 <div class="page" id="page-traffic">
   <div class="sec"><span class="sec-title">Traffic Sources — Installs by Channel</span>
-    <div class="sec-acts"><button class="sec-act" onclick="expTbl('ts-tbl-el','traffic_sources')">↓ CSV</button></div>
+    <div class="sec-acts">
+      <select id="cmp-sel" class="gran-btn" style="cursor:pointer;padding:6px 10px;" onchange="setCompare(this.value)">
+        <option value="none">Comparar: Ninguno</option>
+        <option value="prev">vs. Período anterior</option>
+        <option value="lastmonth">vs. Mismo período mes pasado</option>
+        <option value="lastyear">vs. Mismo período año pasado</option>
+      </select>
+      <button class="sec-act" onclick="expTbl('ts-tbl-el','traffic_sources')">↓ CSV</button>
+    </div>
   </div>
   <div class="g2" style="margin-bottom:24px;">
     <div class="cc"><div class="cc-ttl">Installs por Canal</div><div style="position:relative;height:400px;"><canvas id="c-ts-bar"></canvas></div></div>
@@ -968,10 +980,11 @@ body{
       <thead><tr>
         <th onclick="srt('ts-tbl-el',0)">Canal (source / medium)</th>
         <th class="num" onclick="srt('ts-tbl-el',1)">Installs</th>
-        <th class="num" onclick="srt('ts-tbl-el',2)">%</th>
-        <th class="num" onclick="srt('ts-tbl-el',3)">Trial</th>
-        <th class="num" onclick="srt('ts-tbl-el',4)">Trial%</th>
-        <th class="num" onclick="srt('ts-tbl-el',5)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los shops de este canal, dentro del rango de fechas elegido arriba." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
+        <th class="num" id="ts-cmp-th" style="display:none;">vs. anterior</th>
+        <th class="num" onclick="srt('ts-tbl-el',3)">%</th>
+        <th class="num" onclick="srt('ts-tbl-el',4)">Trial</th>
+        <th class="num" onclick="srt('ts-tbl-el',5)">Trial%</th>
+        <th class="num" onclick="srt('ts-tbl-el',6)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los shops de este canal, dentro del rango de fechas elegido arriba." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       </tr></thead>
       <tbody id="ts-tbl"></tbody>
     </table></div>
@@ -1000,9 +1013,10 @@ body{
         <th onclick="srt('ts-kw-el',0)">Keyword</th>
         <th onclick="srt('ts-kw-el',1)">Tipo</th>
         <th class="num" onclick="srt('ts-kw-el',2)">Installs</th>
-        <th class="num" onclick="srt('ts-kw-el',3)">Trial</th>
-        <th class="num" onclick="srt('ts-kw-el',4)">Trial%</th>
-        <th class="num" onclick="srt('ts-kw-el',5)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los shops que llegaron por esta keyword, dentro del rango de fechas elegido arriba." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
+        <th class="num" id="kw-cmp-th" style="display:none;">vs. anterior</th>
+        <th class="num" onclick="srt('ts-kw-el',4)">Trial</th>
+        <th class="num" onclick="srt('ts-kw-el',5)">Trial%</th>
+        <th class="num" onclick="srt('ts-kw-el',6)">Revenue Total<span class="itip" data-tip="Suma de pagos de suscripción de los shops que llegaron por esta keyword, dentro del rango de fechas elegido arriba." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></th>
       </tr></thead>
       <tbody id="ts-kw-tbl"></tbody>
     </table></div>
@@ -1150,6 +1164,7 @@ body{
 // ▼ PEGAR ACÁ la URL del deployment (termina en /exec)
 var _EXEC_URL = 'https://script.google.com/macros/s/AKfycbyOYJjE4cmJszNqenpSKoCoRVzvg3vVNwA4RoKdHSPSMKdXR9QAoBrYW1c3Sp5DWcW6bg/exec';
 let _ch={},_data=null,_rat=null,_ri=null,_funnelDetails=[],_paidDetails=[],_stampsTable=[];
+let _curFrom='',_curTo='',_cmpMode='none',_cmpTraffic=null,_cmpKeywords=null;
 
 // ── THEME — default always light, persist choice ─────────
 const TK='cust-theme';
@@ -1338,6 +1353,9 @@ function applyCustom(){
   reload(from,to);
 }
 function reload(from,to){
+  _curFrom=from||'';_curTo=to||'';
+  _cmpMode='none';_cmpTraffic=null;_cmpKeywords=null;
+  const cmpSel=document.getElementById('cmp-sel');if(cmpSel)cmpSel.value='none';
   destroyAll();clearBodies();
   _stampsTable=[];
   const si=document.getElementById('st-search');if(si)si.value='';
@@ -1638,6 +1656,141 @@ function mkDo(id,labels,vals){
 // ── PILL HELPERS ─────────────────────────────────────────
 function npill(v){if(v==='N/A')return'<span class="pill p-m">N/A</span>';const n=parseFloat(v);if(isNaN(n))return v;return`<span class="pill ${n<5?'p-g':n<20?'p-y':'p-r'}">$${v}</span>`;}
 function cpill(v){const n=parseFloat(v);return`<span class="pill ${n>=30?'p-g':n>=10?'p-y':'p-r'}">${v}%</span>`;}
+
+// ── COMPARACIÓN DE PERÍODOS (Traffic Sources / Shopify Keywords) ──────────
+function _fmtD(d){const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function _parseD(s){const p=String(s).split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function computeCompareRange(mode){
+  if(!_curFrom||!_curTo) return null;
+  const f=_parseD(_curFrom), t=_parseD(_curTo);
+  const days=Math.round((t-f)/86400000)+1;
+  let cf,ct;
+  if(mode==='prev'){
+    ct=new Date(f); ct.setDate(ct.getDate()-1);
+    cf=new Date(ct); cf.setDate(cf.getDate()-(days-1));
+  } else if(mode==='lastmonth'){
+    cf=new Date(f); cf.setMonth(cf.getMonth()-1);
+    ct=new Date(t); ct.setMonth(ct.getMonth()-1);
+  } else if(mode==='lastyear'){
+    cf=new Date(f); cf.setFullYear(cf.getFullYear()-1);
+    ct=new Date(t); ct.setFullYear(ct.getFullYear()-1);
+  } else return null;
+  return {from:_fmtD(cf), to:_fmtD(ct)};
+}
+function deltaCell(cur,prev){
+  cur=Number(cur)||0;
+  if(prev===null||prev===undefined) return '<span style="color:var(--text-3)">—</span>';
+  prev=Number(prev)||0;
+  if(prev===0) return cur>0 ? '<span style="color:var(--green)">nuevo</span>' : '<span style="color:var(--text-3)">0</span>';
+  const pct=((cur-prev)/prev*100);
+  const sign=pct>0?'+':'';
+  const color=pct>0?'var(--green)':pct<0?'var(--red)':'var(--text-3)';
+  const arrow=pct>0?'↑':pct<0?'↓':'→';
+  return `<span style="color:${color};font-weight:600;">${arrow} ${sign}${pct.toFixed(1)}%</span><br><span style="color:var(--text-3);font-size:11px;">antes: ${prev.toLocaleString()}</span>`;
+}
+function setCompare(mode){
+  _cmpMode=mode;
+  if(mode==='none'){ _cmpTraffic=null; _cmpKeywords=null; renderTrafficSection(); return; }
+  const r=computeCompareRange(mode);
+  if(!r){ toast('Elegí primero un rango de fechas arriba','error'); const sel=document.getElementById('cmp-sel'); if(sel) sel.value='none'; return; }
+  const sel=document.getElementById('cmp-sel'); if(sel) sel.disabled=true;
+  const url=_EXEC_URL+'?json=1&_t='+Date.now()+'&from='+encodeURIComponent(r.from)+'&to='+encodeURIComponent(r.to);
+  fetch(url,{redirect:'follow',cache:'no-store'}).then(x=>x.json()).then(d=>{
+    _cmpTraffic=d.trafficSources||[];
+    _cmpKeywords=d.shopifyKeywords||[];
+    renderTrafficSection();
+    toast('Comparando con '+r.from+' → '+r.to,'success');
+  }).catch(err=>{
+    toast('Error al cargar el período de comparación','error');
+    console.error('[Customily] Compare error:', err);
+  }).finally(()=>{ if(sel) sel.disabled=false; });
+}
+function renderTrafficSection(){
+  if(!_data) return;
+  const data=_data;
+  window._tsDrillRows = [];
+  window._kwDrillRows = [];
+  const hasCmp = _cmpMode!=='none' && (_cmpTraffic!==null || _cmpKeywords!==null);
+  const tsCmpTh=document.getElementById('ts-cmp-th'); if(tsCmpTh) tsCmpTh.style.display = hasCmp?'':'none';
+  const kwCmpTh=document.getElementById('kw-cmp-th'); if(kwCmpTh) kwCmpTh.style.display = hasCmp?'':'none';
+
+  const cmpTsByCanal = {};
+  (_cmpTraffic||[]).forEach(r=>{cmpTsByCanal[r.canal]=r;});
+  const cmpKwByKey = {};
+  (_cmpKeywords||[]).forEach(r=>{cmpKwByKey[(r.keyword||'')+'|'+(r.type||'')]=r;});
+
+  // TRAFFIC SOURCES (BigQuery)
+  const ts = data.trafficSources || [];
+  document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
+  if(ts.length) {
+    mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
+    mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
+    const tstb = document.getElementById('ts-tbl');
+    tstb.innerHTML = '';
+    ts.forEach(r => {
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const _tsIdx = _tsDrillRows.length;
+      _tsDrillRows.push(r);
+      const trialCell = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${r.trials}</span>`
+        : `<span style="color:var(--green)">0</span>`;
+      const revFmt = Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+      const cmpRow = cmpTsByCanal[r.canal];
+      const cmpTd = `<td class="num" style="display:${hasCmp?'':'none'}">${deltaCell(r.installs, cmpRow?cmpRow.installs:null)}</td>`;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td>${cmpTd}<td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td><td class="num" style="color:var(--green)">$${revFmt}</td>`;
+      tstb.appendChild(tr);
+    });
+    const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
+    const totTrials   = ts.reduce((s,r)=>s+(r.trials||0),0);
+    const totRevenue  = ts.reduce((s,r)=>s+(Number(r.revenue)||0),0);
+    const totTrialPct = totInstalls > 0 ? ((totTrials/totInstalls)*100).toFixed(1) : '0.0';
+    const totCmpInstalls = (_cmpTraffic||[]).reduce((s,r)=>s+(r.installs||0),0);
+    const totCmpTd = `<td class="num" style="display:${hasCmp?'':'none'}">${hasCmp?deltaCell(totInstalls, totCmpInstalls):''}</td>`;
+    const totRow = document.createElement('tr');
+    totRow.style.fontWeight='700';
+    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td>${totCmpTd}<td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials}</td><td class="num">${totTrialPct}%</td><td class="num" style="color:var(--green)">$${totRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
+    tstb.appendChild(totRow);
+    document.getElementById('ts-empty').style.display='none';
+  } else {
+    document.getElementById('ts-empty').style.display='block';
+  }
+
+  // Build global trial domains set (sent from backend)
+  window._tsTrialDomains = new Set((data.trialDomains||[]).map(s=>s.toLowerCase().trim()));
+
+  // SHOPIFY KEYWORDS
+  const skw = data.shopifyKeywords || [];
+  window._skwAllRows = skw; // keep full list for filtering
+  if(skw.length) {
+    const kwtb = document.getElementById('ts-kw-tbl');
+    kwtb.innerHTML = '';
+    skw.forEach(r => {
+      const typePill = r.type === 'cpc'
+        ? `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--yellow-soft);color:var(--yellow);font-weight:600;">CPC</span>`
+        : `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--green-soft);color:var(--green);font-weight:600;">Organic</span>`;
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.title = 'Ver stores';
+      tr.dataset.kw = String(r.keyword||'').toLowerCase();
+      tr.dataset.type = r.type || '';
+      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
+      const _kwIdx = _kwDrillRows.length;
+      _kwDrillRows.push(r);
+      const trialClick = r.trials > 0
+        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrillByIdx(${_kwIdx},'trial')">${r.trials}</span>`
+        : `<span style="color:var(--green)">0</span>`;
+      const kwRevFmt = Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+      const cmpRow = cmpKwByKey[(r.keyword||'')+'|'+(r.type||'')];
+      const cmpTd = `<td class="num" style="display:${hasCmp?'':'none'}">${deltaCell(r.installs, cmpRow?cmpRow.installs:null)}</td>`;
+      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrillByIdx(${_kwIdx},'all')">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td>${cmpTd}<td class="num">${trialClick}</td><td class="num">${cpill(trialPct)}</td><td class="num" style="color:var(--green)">$${kwRevFmt}</td>`;
+      kwtb.appendChild(tr);
+    });
+    document.getElementById('ts-kw-empty').style.display='none';
+  } else {
+    document.getElementById('ts-kw-empty').style.display='block';
+  }
+}
 // Ícono "?" con tooltip — hover en desktop, click/tap para togglear (mobile-friendly).
 // Uso: agregar dentro de un <th> o label: `Revenue Total${itip('texto explicativo')}`.
 function itip(text){
@@ -1864,7 +2017,8 @@ function render(data){
     const instCell=`<span title="Conversiones reportadas por Google Ads">${r.installs}</span>`;
     const trialCell=r.trial>0?`<span class="drill-link" style="color:var(--cyan);font-weight:500;" onclick="openCampaignDrill('${sc}','trial')">${r.trial}</span>`:`<span style="color:var(--cyan)">0</span>`;
     const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openCampaignDrill('${sc}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
-    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td>`;
+    const roasCell=r.roas==='N/A'?'N/A':`${r.roas}x`;
+    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td><td class="num" style="color:var(--green)">$${Number(r.revenue).toLocaleString()}</td><td class="num">${roasCell}</td>`;
     atb.appendChild(tr);
   });
   const ktb=document.getElementById('a-kw');
@@ -1873,7 +2027,8 @@ function render(data){
     const sk=r.keyword.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const instCell=r.installs>0?`<span class="drill-link" onclick="openKeywordDrill('${sk}','installs')">${r.installs}</span>`:`0`;
     const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openKeywordDrill('${sk}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
-    tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td>`;
+    const roasCell=r.roas==='N/A'?'N/A':`${r.roas}x`;
+    tr.innerHTML=`<td><strong>${r.keyword}</strong></td><td class="dim">${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks}</td><td class="num">${instCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num" style="color:var(--green)">$${Number(r.revenue).toLocaleString()}</td><td class="num">${roasCell}</td>`;
     ktb.appendChild(tr);
   });
 
@@ -1904,71 +2059,9 @@ function render(data){
     if(emp) emp.style.display='block';
   }
 
-  // TRAFFIC SOURCES (BigQuery)
-  const ts = data.trafficSources || [];
-  document.getElementById('tb6').textContent = ts.length ? ts.reduce((s,r)=>s+r.installs,0).toLocaleString() : '—';
-  if(ts.length) {
-    mkHBar('c-ts-bar', ts.map(r=>r.canal), ts.map(r=>r.installs), '#6840d4');
-    mkDo('c-ts-pie', ts.map(r=>r.canal), ts.map(r=>r.installs));
-    const tstb = document.getElementById('ts-tbl');
-    tstb.innerHTML = '';
-    ts.forEach(r => {
-      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
-      const _tsIdx = _tsDrillRows.length;
-      _tsDrillRows.push(r);
-      const trialCell = r.trials > 0
-        ? `<span class="drill-link" style="color:var(--green)" onclick="openTsDrillByIdx(${_tsIdx},'trial')">${r.trials}</span>`
-        : `<span style="color:var(--green)">0</span>`;
-      const revFmt = Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td><strong class="mono">${r.canal}</strong></td><td class="num">${r.installs.toLocaleString()}</td><td class="num">${r.pct}%</td><td class="num">${trialCell}</td><td class="num">${cpill(trialPct)}</td><td class="num" style="color:var(--green)">$${revFmt}</td>`;
-      tstb.appendChild(tr);
-    });
-    const totInstalls = ts.reduce((s,r)=>s+r.installs,0);
-    const totTrials   = ts.reduce((s,r)=>s+(r.trials||0),0);
-    const totRevenue  = ts.reduce((s,r)=>s+(Number(r.revenue)||0),0);
-    const totTrialPct = totInstalls > 0 ? ((totTrials/totInstalls)*100).toFixed(1) : '0.0';
-    const totRow = document.createElement('tr');
-    totRow.style.fontWeight='700';
-    totRow.innerHTML = `<td>Total</td><td class="num">${totInstalls.toLocaleString()}</td><td class="num">100%</td><td class="num" style="color:var(--green)">${totTrials}</td><td class="num">${totTrialPct}%</td><td class="num" style="color:var(--green)">$${totRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
-    tstb.appendChild(totRow);
-    document.getElementById('ts-empty').style.display='none';
-  } else {
-    document.getElementById('ts-empty').style.display='block';
-  }
-
-  // Build global trial domains set (sent from backend)
-  window._tsTrialDomains = new Set((data.trialDomains||[]).map(s=>s.toLowerCase().trim()));
-
-  // SHOPIFY KEYWORDS
-  const skw = data.shopifyKeywords || [];
-  var _skwAllRows = skw; // keep full list for filtering
-  if(skw.length) {
-    const kwtb = document.getElementById('ts-kw-tbl');
-    kwtb.innerHTML = '';
-    skw.forEach(r => {
-      const typePill = r.type === 'cpc'
-        ? `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--yellow-soft);color:var(--yellow);font-weight:600;">CPC</span>`
-        : `<span style="font-size:10px;padding:2px 7px;border-radius:100px;background:var(--green-soft);color:var(--green);font-weight:600;">Organic</span>`;
-      const tr = document.createElement('tr');
-      tr.style.cursor = 'pointer';
-      tr.title = 'Ver stores';
-      tr.dataset.kw = String(r.keyword||'').toLowerCase();
-      tr.dataset.type = r.type || '';
-      const trialPct = r.installs > 0 ? ((r.trials/r.installs)*100).toFixed(1) : '0.0';
-      const _kwIdx = _kwDrillRows.length;
-      _kwDrillRows.push(r);
-      const trialClick = r.trials > 0
-        ? `<span class="drill-link" style="color:var(--green)" onclick="openKwDrillByIdx(${_kwIdx},'trial')">${r.trials}</span>`
-        : `<span style="color:var(--green)">0</span>`;
-      const kwRevFmt = Number(r.revenue||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-      tr.innerHTML = `<td><span class="drill-link" onclick="openKwDrillByIdx(${_kwIdx},'all')">${r.keyword}</span></td><td>${typePill}</td><td class="num">${r.installs}</td><td class="num">${trialClick}</td><td class="num">${cpill(trialPct)}</td><td class="num" style="color:var(--green)">$${kwRevFmt}</td>`;
-      kwtb.appendChild(tr);
-    });
-    document.getElementById('ts-kw-empty').style.display='none';
-  } else {
-    document.getElementById('ts-kw-empty').style.display='block';
-  }
+  // TRAFFIC SOURCES + SHOPIFY KEYWORDS (extraído a función aparte para poder
+  // re-renderizar solo esta sección cuando se activa la comparación de períodos)
+  renderTrafficSection();
 
   // RETENTION
   const sa=Object.entries(funnel.churnBuckets).sort((a,b)=>b[1]-a[1]);
@@ -2585,6 +2678,7 @@ function onError(err){
     const mtdBtn=[...document.querySelectorAll('.preset-btn')].find(b=>/onclick="setPreset\('mtd'/.test(b.getAttribute('onclick')||''));
     if(mtdBtn) mtdBtn.classList.add('active');
   }
+  _curFrom=from;_curTo=to;
   let url=_EXEC_URL+'?json=1';
   if(from) url+='&from='+encodeURIComponent(from);
   if(to)   url+='&to='+encodeURIComponent(to);
