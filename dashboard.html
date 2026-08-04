@@ -712,6 +712,14 @@ body{
     </div></div>
   </div>
   <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-wk-all"></canvas></div></div>
+  <div class="sec"><span class="sec-title">Real Trials — Monday vs Partner API</span>
+    <span class="itip" data-tip="Monday = 3 tableros cargados a mano (instalación real, revisada por CSM). Partner API = SUBSCRIPTION_CHARGE_ACTIVATED, dedup por dominio, excluyendo tiendas con dominio autogenerado tipo x9ufus-aq.myshopify.com (bots/tests). Sigue sin ser 1:1 porque Monday es curación manual." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span>
+  </div>
+  <div style="display:flex;gap:16px;margin-bottom:8px;font-size:12px;color:var(--text-3);">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3d6fff;margin-right:4px;"></span>Partner API (proxy)</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#00a86b;margin-right:4px;"></span>Monday (real)</span>
+  </div>
+  <div class="cc" style="margin-bottom:24px;padding:28px;"><div style="position:relative;height:220px;"><canvas id="c-wk-real"></canvas></div></div>
   <div class="sec"><span class="sec-title">Channel Performance</span>
     <div class="sec-acts"><button class="sec-act" onclick="expTbl('ch-tbody','channels')">↓ CSV</button></div>
   </div>
@@ -1137,7 +1145,7 @@ body{
 </div><!-- #app -->
 
 <div class="footer" id="footer" style="display:none;">
-  <div>Customily Attribution v9</div>
+  <div>Customily Attribution v11</div>
   <div class="flinks">
     <span class="flink" onclick="manualRefresh()">Refresh</span>
     <span class="flink" onclick="toggleSh()">Shortcuts</span>
@@ -1642,6 +1650,13 @@ function mkVBar(id,labels,vals,color){
   const c=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{data:vals,backgroundColor:color,borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted}},y:{grid:{color:grid},ticks:{color:muted}}}}});
   _ch[id]=c;return c;
 }
+function mk2Bar(id,labels,valsA,valsB,colorA,colorB){
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  const{muted,grid}=gc();
+  const c=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{label:'Partner API',data:valsA,backgroundColor:colorA,borderRadius:3,borderSkipped:false},{label:'Monday',data:valsB,backgroundColor:colorB,borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:12}},y:{grid:{color:grid},ticks:{color:muted,precision:0}}}}});
+  _ch[id]=c;return c;
+}
 function mkDo(id,labels,vals){
   const inv=['(not set)','(not provided)','','not set','not provided'];
   const f=labels.map((l,i)=>({l,v:vals[i]})).filter(d=>!inv.includes(String(d.l).toLowerCase().trim()));
@@ -1911,6 +1926,11 @@ function render(data){
 
   // Installs time
   _ch['c-wk-all']=mkLine('c-wk-all',funnel.byWeek.map(r=>r.label),funnel.byWeek.map(r=>r.value),'#3d6fff');
+
+  // Real trials — Monday (real) vs Partner API (proxy)
+  if(data.realTrials && data.realTrials.length){
+    _ch['c-wk-real']=mk2Bar('c-wk-real',data.realTrials.map(r=>r.label),data.realTrials.map(r=>r.partner),data.realTrials.map(r=>r.monday),'#3d6fff','#00a86b');
+  }
 
   // Channel table
   const cht=document.getElementById('ch-tbody');
