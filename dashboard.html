@@ -686,6 +686,7 @@ body{
   <div class="tab t-stamps" onclick="switchTab('stamps',this)">Stamps <span class="tab-bdg" id="tb5">—</span></div>
   <div class="tab t-traffic" onclick="switchTab('traffic',this)">Traffic Sources <span class="tab-bdg" id="tb6">—</span></div>
   <div class="tab t-pivot" onclick="switchTab('pivot',this)">Pivot <span class="tab-bdg" id="tb7">—</span></div>
+  <div class="tab t-listing" onclick="switchTab('listing',this)">Data Listing <span class="tab-bdg" id="tb8">—</span></div>
 </div>
 <div id="alerts-bar"><div class="al-inner" id="al-inner"></div></div>
 
@@ -1091,6 +1092,38 @@ body{
   </div>
 </div>
 
+<!-- DATA LISTING -->
+<div class="page" id="page-listing">
+  <div class="sec"><span class="sec-title">Data Listing — Installs por país<span class="itip" data-tip="Independiente del rango de fechas de arriba. Muestra 2026 completo mes a mes para poder comparar antes/después de cada lanzamiento de listing traducido." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span></span>
+    <div class="sec-acts"><button class="sec-act" onclick="expTbl('lst-rank-tbody','installs_por_pais')">↓ CSV</button></div>
+  </div>
+
+  <div class="cc" style="margin-bottom:24px;">
+    <div class="cc-ttl">Installs mensuales — BR / ES / MX / FR / DE (2026)<span class="bdg" style="margin-left:8px;">líneas punteadas = lanzamiento de listing</span></div>
+    <div style="position:relative;height:320px;"><canvas id="c-lst-mon"></canvas></div>
+  </div>
+
+  <div class="g2" style="margin-bottom:24px;">
+    <div class="cc">
+      <div class="cc-ttl">Lanzamientos cargados</div>
+      <div class="tbl-wrap"><table class="tbl" id="lst-launch-tbl">
+        <thead><tr><th>País</th><th>Idioma</th><th>Fecha</th><th>Notas</th></tr></thead>
+        <tbody id="lst-launch-tbody"></tbody>
+      </table></div>
+      <div id="lst-launch-empty" style="display:none;padding:16px 4px;color:var(--text-3);font-size:12px;">
+        Todavía no hay fechas cargadas en el sheet <b>Listing_Launches</b>. Cargalas ahí (columna "Launch Date", formato YYYY-MM-DD) y van a aparecer acá y como líneas en el gráfico.
+      </div>
+    </div>
+    <div class="cc">
+      <div class="cc-ttl">Ranking de países — Installs 2026<span class="bdg" style="margin-left:8px;">top 20</span></div>
+      <div class="tbl-wrap"><table class="tbl" id="lst-rank-tbl">
+        <thead><tr><th onclick="srt('lst-rank-tbl',0)">País</th><th class="num" onclick="srt('lst-rank-tbl',1)">Installs</th></tr></thead>
+        <tbody id="lst-rank-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
 <!-- TRAFFIC KEYWORD DRILL MODAL -->
 <div id="kw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow-y:auto;" onclick="if(event.target===this)closeKwDrill()">
   <div style="background:var(--surface);border-radius:14px;max-width:680px;margin:60px auto;padding:28px;box-shadow:var(--shadow-lg);">
@@ -1305,8 +1338,8 @@ function cv(el){
 function toggleSh(){document.getElementById('smod').classList.toggle('show');}
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
-  const ts=['funnel','paid','lost','ads','retention','stamps','traffic','pivot'];
-  if(e.key>='1'&&e.key<='8')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
+  const ts=['funnel','paid','lost','ads','retention','stamps','traffic','pivot','listing'];
+  if(e.key>='1'&&e.key<='9')switchTab(ts[e.key-1],document.querySelectorAll('.tab')[e.key-1]);
   if(e.key==='r'||e.key==='R') manualRefresh();
   if(e.key==='Escape') document.getElementById('smod').classList.remove('show');
 });
@@ -1369,7 +1402,7 @@ function reload(from,to){
   const si=document.getElementById('st-search');if(si)si.value='';
   const ki=document.getElementById('kw-search');if(ki)ki.value='';
   _kwSearchQ='';_kwActiveType='all';
-  ['c-wk-all','c-wk-paid','c-p-ch','c-p-co','c-p-churn','c-p-avgd','c-p-stamp','c-p-stamp-conv','c-l-ch','c-l-ttc','c-l-co','c-l-rsn','c-r-ttc','c-r-ttcp','c-r-rsn','c-r-ch','c-srf','c-skw','c-st-mon','c-st-top','c-st-plat'].forEach(freshCanvas);
+  ['c-wk-all','c-wk-paid','c-p-ch','c-p-co','c-p-churn','c-p-avgd','c-p-stamp','c-p-stamp-conv','c-l-ch','c-l-ttc','c-l-co','c-l-rsn','c-r-ttc','c-r-ttcp','c-r-rsn','c-r-ch','c-srf','c-skw','c-st-mon','c-st-top','c-st-plat','c-lst-mon'].forEach(freshCanvas);
   document.getElementById('loading').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('footer').style.display='none';
@@ -1385,7 +1418,7 @@ function manualRefresh(){
   const a=document.querySelector('.preset-btn.active');if(a)a.click();
 }
 function destroyAll(){Object.values(_ch).forEach(c=>{try{c.destroy();}catch(e){}});_ch={};}
-function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody','pv-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
+function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody','pv-tbody','lst-rank-tbody','lst-launch-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
 function freshCanvas(id){
   const o=document.getElementById(id);if(!o) return null;
   const n=document.createElement('canvas');n.id=id;
@@ -1417,6 +1450,7 @@ function switchTab(name,el){
   document.getElementById('page-'+name).classList.add('active');
   if(el) el.classList.add('active');
   if(name==='pivot') renderPivot();
+  if(name==='listing') renderListingCountries();
   scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1657,6 +1691,111 @@ function mk2Bar(id,labels,valsA,valsB,colorA,colorB){
   const c=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets:[{label:'Partner API',data:valsA,backgroundColor:colorA,borderRadius:3,borderSkipped:false},{label:'Monday',data:valsB,backgroundColor:colorB,borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:12}},y:{grid:{color:grid},ticks:{color:muted,precision:0}}}}});
   _ch[id]=c;return c;
 }
+// Plugin custom: dibuja líneas verticales punteadas sobre un chart de
+// categorías (x = labels de mes) marcando fechas de lanzamiento de listing.
+// opts.lines = [{label:'2026-06', color:'#ff4363', tag:'Brazil'}]
+const _launchLinesPlugin={
+  id:'launchLines',
+  afterDatasetsDraw(chart,args,opts){
+    const lines=(opts&&opts.lines)||[];
+    if(!lines.length) return;
+    const{ctx,chartArea,scales:{x}}=chart;
+    if(!chartArea) return;
+    lines.forEach(l=>{
+      const idx=chart.data.labels.indexOf(l.label);
+      if(idx<0) return;
+      const xPos=x.getPixelForValue(idx);
+      if(xPos<chartArea.left||xPos>chartArea.right) return;
+      ctx.save();
+      ctx.strokeStyle=l.color||'#ff4363';
+      ctx.setLineDash([4,4]);
+      ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(xPos,chartArea.top);
+      ctx.lineTo(xPos,chartArea.bottom);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+};
+if(typeof Chart!=='undefined') Chart.register(_launchLinesPlugin);
+
+// Multi-línea (una serie por país) con markers de lanzamiento opcionales.
+function mkMultiLine(id,labels,series,launchLines){
+  if(!document.getElementById(id)) return null;
+  _destroyChart(id);
+  if(!labels.length) return null;
+  const{muted,grid}=gc();
+  const datasets=series.map((s,i)=>({
+    label:s.country,
+    data:s.values,
+    borderColor:PAL[i%PAL.length],
+    backgroundColor:'transparent',
+    borderWidth:2,
+    fill:false,
+    tension:.35,
+    pointRadius:3,
+    pointBackgroundColor:PAL[i%PAL.length],
+    pointHoverRadius:5
+  }));
+  const c=new Chart(document.getElementById(id),{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:muted,boxWidth:10,padding:12}},
+        launchLines:{lines:launchLines||[]}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:12}},
+        y:{grid:{color:grid},ticks:{color:muted,precision:0,stepSize:1}}
+      }
+    }
+  });
+  _ch[id]=c;return c;
+}
+
+// ── DATA LISTING TAB ─────────────────────────────────────
+function renderListingCountries(){
+  if(!_data||!_data.listingCountries) return;
+  const lc=_data.listingCountries;
+
+  // Ranking table
+  const rankBody=document.getElementById('lst-rank-tbody');
+  if(rankBody){
+    rankBody.innerHTML='';
+    (lc.ranking||[]).forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${r.country}</td><td class="num">${Number(r.installs).toLocaleString()}</td>`;
+      rankBody.appendChild(tr);
+    });
+  }
+
+  // Launches table
+  const lBody=document.getElementById('lst-launch-tbody');
+  const lEmpty=document.getElementById('lst-launch-empty');
+  if(lBody){
+    lBody.innerHTML='';
+    (lc.launches||[]).forEach(l=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${l.country}</td><td>${l.language}</td><td>${l.date}</td><td>${l.notes||''}</td>`;
+      lBody.appendChild(tr);
+    });
+    if(lEmpty) lEmpty.style.display=(lc.launches||[]).length?'none':'block';
+  }
+
+  // Chart: BR/ES/MX/FR/DE mensual + líneas de lanzamiento por país
+  const months=lc.months||[];
+  const series=lc.series||[];
+  const launchLines=(lc.launches||[]).map(l=>{
+    const idx=series.findIndex(s=>s.country===l.country);
+    const color=idx>=0?PAL[idx%PAL.length]:'#ff4363';
+    return {label:l.date.substring(0,7),color,tag:l.country};
+  });
+  mkMultiLine('c-lst-mon',months,series,launchLines);
+}
+
 function mkDo(id,labels,vals){
   const inv=['(not set)','(not provided)','','not set','not provided'];
   const f=labels.map((l,i)=>({l,v:vals[i]})).filter(d=>!inv.includes(String(d.l).toLowerCase().trim()));
@@ -1897,6 +2036,10 @@ function render(data){
   document.getElementById('tb3').textContent='$'+Number(ads.totalSpend).toLocaleString();
   document.getElementById('tb4').textContent=(parseFloat(funnel.churnRate)||0)+'%';
   if(stamps) document.getElementById('tb5').textContent=(stamps.total||0).toLocaleString();
+  if(data.listingCountries){
+    const lcTotal=(data.listingCountries.ranking||[]).reduce((s,r)=>s+(r.installs||0),0);
+    document.getElementById('tb8').textContent=lcTotal.toLocaleString();
+  }
 
   buildAlerts(data);
   buildInsights(data);
@@ -1959,6 +2102,7 @@ function render(data){
   const tb7 = document.getElementById('tb7');
   if (tb7) tb7.textContent = _funnelDetails.length.toLocaleString();
   renderPivot();
+  renderListingCountries();
 
   // PAID TAB
   document.getElementById('p-total').textContent=paid.total.toLocaleString();
