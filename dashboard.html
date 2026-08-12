@@ -1211,6 +1211,11 @@ body{
 <script>
 // ▼ PEGAR ACÁ la URL del deployment (termina en /exec)
 var _EXEC_URL = 'https://script.google.com/macros/s/AKfycbzrNhjNI8DUCGfsuabUFl7IjOVwAPlhlH3ZlsOJbOO8zzdq5RVP3Yj-PyfgoNev1nJJeQ/exec';
+// Si esta página la sirve el propio Apps Script (doGet), reemplaza el null
+// de abajo por los datos ya calculados — así se evita el fetch JSON
+// separado que venía fallando. Si se sirve como HTML estático (GitHub
+// Pages) queda en null y usa el fetch de siempre.
+var _SERVER_DATA = /*__SERVER_DATA__*/null;
 let _ch={},_data=null,_rat=null,_ri=null,_funnelDetails=[],_paidDetails=[],_stampsTable=[];
 let _curFrom='',_curTo='',_cmpMode='none',_cmpTraffic=null,_cmpKeywords=null;
 
@@ -2856,6 +2861,9 @@ function onError(err){
     if(mtdBtn) mtdBtn.classList.add('active');
   }
   _curFrom=from;_curTo=to;
+  // Si el propio doGet ya inyectó los datos (servido desde Apps Script
+  // directo, no GitHub Pages), usarlos y listo — sin fetch adicional.
+  if(_SERVER_DATA){ render(_SERVER_DATA); return; }
   let url=_EXEC_URL+'?json=1';
   if(from) url+='&from='+encodeURIComponent(from);
   if(to)   url+='&to='+encodeURIComponent(to);
