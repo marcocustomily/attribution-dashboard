@@ -1099,7 +1099,14 @@ body{
   </div>
 
   <div class="cc" style="margin-bottom:24px;">
-    <div class="cc-ttl">Installs mensuales — BR / ES / MX / FR / DE (2026)<span class="bdg" style="margin-left:8px;">líneas punteadas = lanzamiento de listing</span></div>
+    <div class="cc-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>Mensual — BR / ES / MX / FR / DE (2026)<span class="bdg" style="margin-left:8px;">líneas punteadas = lanzamiento de listing</span></span>
+      <div class="gran-tog">
+        <button class="gran-btn active" id="lst-btn-installs" onclick="setListingMetric('installs',this)">Installs</button>
+        <button class="gran-btn" id="lst-btn-trials" onclick="setListingMetric('trials',this)">Trials (Partner API)</button>
+        <button class="gran-btn" id="lst-btn-mondayTrials" onclick="setListingMetric('mondayTrials',this)">Trials (Monday, real)</button>
+      </div>
+    </div>
     <div style="position:relative;height:320px;"><canvas id="c-lst-mon"></canvas></div>
   </div>
 
@@ -1115,9 +1122,9 @@ body{
       </div>
     </div>
     <div class="cc">
-      <div class="cc-ttl">Ranking de países — Installs 2026<span class="bdg" style="margin-left:8px;">top 20</span></div>
+      <div class="cc-ttl">Ranking de países — 2026<span class="bdg" style="margin-left:8px;">top 20 por installs</span></div>
       <div class="tbl-wrap"><table class="tbl" id="lst-rank-tbl">
-        <thead><tr><th onclick="srt('lst-rank-tbl',0)">País</th><th class="num" onclick="srt('lst-rank-tbl',1)">Installs</th></tr></thead>
+        <thead><tr><th onclick="srt('lst-rank-tbl',0)">País</th><th class="num" onclick="srt('lst-rank-tbl',1)">Installs</th><th class="num" onclick="srt('lst-rank-tbl',2)">Trials (API)</th><th class="num" onclick="srt('lst-rank-tbl',3)">Trial Rate (API)</th><th class="num" onclick="srt('lst-rank-tbl',4)">Trials (Monday)</th><th class="num" onclick="srt('lst-rank-tbl',5)">Trial Rate (Monday)</th></tr></thead>
         <tbody id="lst-rank-tbody"></tbody>
       </table></div>
     </div>
@@ -1757,17 +1764,23 @@ function mkMultiLine(id,labels,series,launchLines){
 }
 
 // ── DATA LISTING TAB ─────────────────────────────────────
+let _lstMetric='installs'; // 'installs' | 'trials'
+function setListingMetric(metric,btn){
+  _lstMetric=metric;
+  if(btn){btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  renderListingCountries();
+}
 function renderListingCountries(){
   if(!_data||!_data.listingCountries) return;
   const lc=_data.listingCountries;
 
-  // Ranking table
+  // Ranking table (installs + trials Partner API + trials Monday, con trial rate de cada uno)
   const rankBody=document.getElementById('lst-rank-tbody');
   if(rankBody){
     rankBody.innerHTML='';
     (lc.ranking||[]).forEach(r=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.country}</td><td class="num">${Number(r.installs).toLocaleString()}</td>`;
+      tr.innerHTML=`<td>${r.country}</td><td class="num">${Number(r.installs).toLocaleString()}</td><td class="num" style="color:var(--cyan)">${Number(r.trials||0).toLocaleString()}</td><td class="num">${cpill(r.trialRate||'0.0')}</td><td class="num" style="color:var(--green)">${Number(r.trialsMonday||0).toLocaleString()}</td><td class="num">${cpill(r.trialRateMonday||'0.0')}</td>`;
       rankBody.appendChild(tr);
     });
   }
@@ -1785,9 +1798,9 @@ function renderListingCountries(){
     if(lEmpty) lEmpty.style.display=(lc.launches||[]).length?'none':'block';
   }
 
-  // Chart: BR/ES/MX/FR/DE mensual + líneas de lanzamiento por país
+  // Chart: BR/ES/MX/FR/DE mensual (installs / trials Partner API / trials Monday según toggle) + líneas de lanzamiento
   const months=lc.months||[];
-  const series=lc.series||[];
+  const series=(_lstMetric==='trials'?lc.seriesTrials:_lstMetric==='mondayTrials'?lc.seriesMondayTrials:lc.series)||[];
   const launchLines=(lc.launches||[]).map(l=>{
     const idx=series.findIndex(s=>s.country===l.country);
     const color=idx>=0?PAL[idx%PAL.length]:'#ff4363';
