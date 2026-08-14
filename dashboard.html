@@ -1100,13 +1100,21 @@ body{
 
   <div class="cc" style="margin-bottom:24px;">
     <div class="cc-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <span>Mensual — BR / ES / MX / FR / DE (2026)<span class="bdg" style="margin-left:8px;">líneas punteadas = lanzamiento de listing</span></span>
-      <div class="gran-tog">
-        <button class="gran-btn active" id="lst-btn-installs" onclick="setListingMetric('installs',this)">Installs</button>
-        <button class="gran-btn" id="lst-btn-trials" onclick="setListingMetric('trials',this)">Trials (Partner API)</button>
-        <button class="gran-btn" id="lst-btn-mondayTrials" onclick="setListingMetric('mondayTrials',this)">Trials (Monday, real)</button>
+      <span id="lst-period-lbl">Mensual — BR / ES / MX / FR / DE (2026)<span class="bdg" style="margin-left:8px;">líneas punteadas = lanzamiento de listing</span></span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="gran-tog">
+          <button class="gran-btn" id="lst-gran-daily" onclick="setListingGran('daily',this)">Daily</button>
+          <button class="gran-btn" id="lst-gran-weekly" onclick="setListingGran('weekly',this)">Weekly</button>
+          <button class="gran-btn active" id="lst-gran-monthly" onclick="setListingGran('monthly',this)">Monthly</button>
+        </div>
+        <div class="gran-tog">
+          <button class="gran-btn active" id="lst-btn-installs" onclick="setListingMetric('installs',this)">Installs</button>
+          <button class="gran-btn" id="lst-btn-trials" onclick="setListingMetric('trials',this)">Trials (Partner API)</button>
+          <button class="gran-btn" id="lst-btn-mondayTrials" onclick="setListingMetric('mondayTrials',this)">Trials (Monday, real)</button>
+        </div>
       </div>
     </div>
+    <div id="lst-daily-note" style="display:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-bottom:10px;">Daily/Weekly no tiene datos de Trials (Monday, real) todavía — mostrando Installs.</div>
     <div style="position:relative;height:320px;"><canvas id="c-lst-mon"></canvas></div>
   </div>
 
@@ -1380,6 +1388,12 @@ function setPreset(p,btn){
   }
   if(p==='custom'){
     btn.classList.add('active');
+    // Si ya había un custom aplicado (ej. venimos de un Refresh), re-renderizar
+    // directo con los mismos from/to en vez de reabrir el selector.
+    if(_activePreset==='custom' && _curFrom && _curTo){
+      const ytdR=_presetData['ytd'];
+      if(ytdR){ render(_buildCustomView(ytdR,_curFrom,_curTo)); return; }
+    }
     document.getElementById('crw').classList.add('show');
     const today=new Date().toISOString().split('T')[0];
     const toEl=document.getElementById('dt-to');
@@ -1393,12 +1407,195 @@ function setPreset(p,btn){
   render(r);
 }
 function quickRange(kind){
-  toast('Rango personalizado no disponible en este modo — usá 7D / 30D / MTD / YTD','error');
-  document.getElementById('cr-pop').classList.remove('show');
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const t=new Date();
+  let from, to=t;
+  if(kind==='last_month'){
+    from=new Date(t.getFullYear(),t.getMonth()-1,1);
+    to=new Date(t.getFullYear(),t.getMonth(),0);
+  } else if(kind==='90d'){
+    from=new Date(t);from.setDate(from.getDate()-90);
+  } else if(kind==='quarter'){
+    const qStartMonth=Math.floor(t.getMonth()/3)*3;
+    from=new Date(t.getFullYear(),qStartMonth,1);
+  } else if(kind==='all'){
+    from=new Date(t.getFullYear(),0,1); // límite real: el dataset YTD solo trae desde el 1/1 del año en curso
+  } else return;
+  document.getElementById('dt-from').value=fmt(from);
+  document.getElementById('dt-to').value=fmt(to);
+  applyCustom();
 }
+// ── CUSTOM RANGE (ago 2026) ───────────────────────────────
+// Reimplementado sobre el dataset YTD (que ya viene con funnel.details /
+// paid.details fila por fila con installDate) — se filtra y se recalculan
+// los agregados acá mismo en JS, sin volver a pedirle nada al Web App roto.
+// Limitación conocida: Ads / Stamps / Traffic Sources / Uninstall Reasons
+// quedan con los valores de TODO el año (no se recalculan para el
+// sub-rango elegido) — requeriría datos crudos con fecha que hoy no viajan
+// para esas secciones. Full Funnel, Paid Merchants y Lost sí quedan 100%
+// recalculados para el rango exacto elegido.
 function applyCustom(){
-  toast('Rango personalizado no disponible en este modo — usá 7D / 30D / MTD / YTD','error');
   document.getElementById('cr-pop').classList.remove('show');
+  const from=document.getElementById('dt-from').value;
+  const to=document.getElementById('dt-to').value||new Date().toISOString().split('T')[0];
+  if(!from){alert('Seleccioná una fecha de inicio');return;}
+  const ytd=_presetData['ytd'];
+  if(!ytd){ toast('Todavía no cargó el dataset YTD — reintentá en unos segundos','error'); return; }
+  const yearStart=(ytd._from||(new Date().getFullYear()+'-01-01'));
+  if(from<yearStart){ toast('El rango Custom solo puede empezar desde '+yearStart+' (límite del dataset YTD)','error'); return; }
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  const customBtn=[...document.querySelectorAll('.preset-btn')].find(b=>/onclick="setPreset\('custom'/.test(b.getAttribute('onclick')||''));
+  if(customBtn) customBtn.classList.add('active');
+  _activePreset='custom';
+  _curFrom=from; _curTo=to;
+  render(_buildCustomView(ytd,from,to));
+  const disp=document.getElementById('cr-display'); if(disp) disp.textContent=from+' → '+to;
+  toast('Rango: '+from+' → '+to,'success');
+}
+function _isInvalidV(v){ const l=String(v||'').toLowerCase().trim(); return !l||l==='(not set)'||l==='(not provided)'||l==='not set'||l==='(organic)'; }
+function _cvRate(total,paid){ return total>0?((paid/total)*100).toFixed(1):'0.0'; }
+function _groupCountC(rows,field,top){
+  const c={}; rows.forEach(r=>{const k=r[field]||''; if(!_isInvalidV(k)) c[k]=(c[k]||0)+1;});
+  const res=Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v}));
+  return top?res.slice(0,top):res;
+}
+function _convByDimC(allR,paidR,actR,field,top){
+  const totals={},paidMap={},actMap={},revMap={};
+  allR.forEach(r=>{const k=r[field]||''; if(!_isInvalidV(k)) totals[k]=(totals[k]||0)+1;});
+  paidR.forEach(r=>{const k=r[field]||''; if(!_isInvalidV(k)){paidMap[k]=(paidMap[k]||0)+1; revMap[k]=(revMap[k]||0)+(Number(r.firstPayAmt)||0);}});
+  actR.forEach(r=>{const k=r[field]||''; if(!_isInvalidV(k)) actMap[k]=(actMap[k]||0)+1;});
+  const res=Object.entries(totals).map(([l,t])=>({
+    label:l, installs:t, activated:actMap[l]||0, activationRate:_cvRate(t,actMap[l]||0),
+    paid:paidMap[l]||0, convRate:_cvRate(t,paidMap[l]||0),
+    revenue:(revMap[l]||0).toFixed(2), paymentCount:paidMap[l]||0
+  })).sort((a,b)=>b.installs-a.installs);
+  return top?res.slice(0,top):res;
+}
+function _byDayC(rows){
+  const d={}; rows.forEach(r=>{ if(!r.installDate) return; d[r.installDate]=(d[r.installDate]||0)+1; });
+  return Object.entries(d).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+function _byWeekC(rows){
+  const w={}; rows.forEach(r=>{
+    if(!r.installDate) return;
+    const dt=new Date(r.installDate+'T12:00:00'); if(isNaN(dt)) return;
+    const day=dt.getDay(); const diff=dt.getDate()-day+(day===0?-6:1);
+    const mon=new Date(dt.getFullYear(),dt.getMonth(),diff);
+    const pad=n=>String(n).padStart(2,'0');
+    const k=`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+    w[k]=(w[k]||0)+1;
+  });
+  return Object.entries(w).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+function _byMonthC(rows){
+  const m={}; rows.forEach(r=>{ if(!r.installDate) return; const k=r.installDate.substring(0,7); m[k]=(m[k]||0)+1; });
+  return Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+}
+function _churnBucketsC(rows){
+  const churned=rows.filter(r=>r.status==='Churned'&&(r.daysActive||0)>=0);
+  return {
+    'Menos de 1h': churned.filter(r=>r.daysActive===0).length,
+    '1 a 7 dias':  churned.filter(r=>r.daysActive>=1&&r.daysActive<=7).length,
+    '8 a 30 dias': churned.filter(r=>r.daysActive>=8&&r.daysActive<=30).length,
+    '31 a 90 dias':churned.filter(r=>r.daysActive>=31&&r.daysActive<=90).length,
+    'Mas de 90d':  churned.filter(r=>r.daysActive>90).length
+  };
+}
+function _churnByDimC(rows,field){
+  const totals={},churned={};
+  rows.forEach(r=>{ const k=r[field]||''; if(_isInvalidV(k)) return; totals[k]=(totals[k]||0)+1; if(r.status==='Churned') churned[k]=(churned[k]||0)+1; });
+  return Object.entries(totals).map(([l,t])=>({label:l,value:(((churned[l]||0)/t)*100).toFixed(1)})).sort((a,b)=>b.value-a.value);
+}
+function _avgDaysByDimC(rows,field){
+  const sums={},counts={};
+  rows.forEach(r=>{ const k=r[field]||''; if(_isInvalidV(k)) return; sums[k]=(sums[k]||0)+(r.daysActive||0); counts[k]=(counts[k]||0)+1; });
+  return Object.entries(sums).map(([l,s])=>({label:l,value:(s/counts[l]).toFixed(1)})).sort((a,b)=>b.value-a.value);
+}
+function _buildCustomView(ytd,from,to){
+  const inRange=r=> r.installDate && r.installDate>=from && r.installDate<=to;
+  const funnelDetails=(ytd.funnel.details||[]).filter(inRange);
+  const paidDetailsAll=(ytd.paid.details||[]).filter(inRange);
+  const allRows=funnelDetails;
+  const paidRows=allRows.filter(r=>r.paid);
+  const activatedRows=allRows.filter(r=>r.activated);
+  const lostRows=allRows.filter(r=>!r.paid);
+
+  const totalInstalls=allRows.length;
+  const totalActivated=activatedRows.length;
+  const totalPaid=paidRows.length;
+  const totalChurned=allRows.filter(r=>r.status==='Churned').length;
+  const totalActive=allRows.filter(r=>r.status==='Active').length;
+  const churnRate=_cvRate(totalInstalls,totalChurned);
+  const conversionRate=_cvRate(totalInstalls,totalPaid);
+  const activationRate=_cvRate(totalInstalls,totalActivated);
+  const avgDaysAll=allRows.length>0?(allRows.reduce((s,r)=>s+(r.daysActive||0),0)/allRows.length).toFixed(1):0;
+  const quality={
+    moreThan1h:((allRows.filter(r=>r.daysActive>0).length/(allRows.length||1))*100).toFixed(1),
+    moreThan7d:((allRows.filter(r=>r.daysActive>=7).length/(allRows.length||1))*100).toFixed(1),
+    moreThan30d:((allRows.filter(r=>r.daysActive>=30).length/(allRows.length||1))*100).toFixed(1)
+  };
+
+  const paidActive=paidRows.filter(r=>r.status==='Active').length;
+  const paidChurned=paidRows.filter(r=>r.status==='Churned').length;
+  const paidChurnRate=_cvRate(paidRows.length,paidChurned);
+  const avgDaysPaid=paidRows.length>0?(paidRows.reduce((s,r)=>s+(r.daysActive||0),0)/paidRows.length).toFixed(1):0;
+  const totalRevenue=paidRows.reduce((s,r)=>s+(Number(r.firstPayAmt)||0),0).toFixed(2);
+
+  const lostTotal=lostRows.length;
+  const lostImmediate=lostRows.filter(r=>r.daysActive===0).length;
+  const lostShortTerm=lostRows.filter(r=>r.daysActive>=1&&r.daysActive<=7).length;
+  const lostLongTerm=lostRows.filter(r=>r.daysActive>7).length;
+
+  const _pbs={};
+  paidRows.forEach(r=>{
+    const s=r.stamp; if(!s) return;
+    if(!_pbs[s]) _pbs[s]={paid:0,active:0,churned:0,daysSum:0,revenue:0};
+    _pbs[s].paid++; if(r.status==='Active') _pbs[s].active++; if(r.status==='Churned') _pbs[s].churned++;
+    _pbs[s].daysSum+=r.daysActive||0; _pbs[s].revenue+=Number(r.firstPayAmt)||0;
+  });
+  const _ibs={}; allRows.forEach(r=>{ if(r.stamp) _ibs[r.stamp]=(_ibs[r.stamp]||0)+1; });
+  const byStamp=Object.entries(_pbs).sort((a,b)=>b[1].paid-a[1].paid).slice(0,25).map(([stamp,v])=>{
+    const installs=_ibs[stamp]||0;
+    return { stamp, paid:v.paid, pct:((v.paid/(paidRows.length||1))*100).toFixed(1),
+      active:v.active, churned:v.churned, churnRate:v.paid>0?((v.churned/v.paid)*100).toFixed(1):'0.0',
+      avgDays:v.paid>0?(v.daysSum/v.paid).toFixed(1):'0.0', revenue:v.revenue.toFixed(2),
+      installs, convRate:installs>0?((v.paid/installs)*100).toFixed(1):'0.0' };
+  });
+
+  return {
+    funnel: {
+      totalInstalls, uniqueShops: totalInstalls, totalActivated, activationRate,
+      totalPaid, uniquePaidShops: totalPaid, totalActive, totalChurned, churnRate, conversionRate, avgDaysAll, quality,
+      byChannel: _convByDimC(allRows,paidRows,activatedRows,'channel',15),
+      byCountry: _convByDimC(allRows,paidRows,activatedRows,'country',15),
+      byKeyword: _convByDimC(allRows,paidRows,activatedRows,'keyword',15),
+      byDay:_byDayC(allRows), byWeek:_byWeekC(allRows), byMonth:_byMonthC(allRows),
+      churnBuckets:_churnBucketsC(allRows), details:funnelDetails
+    },
+    realTrials: ytd.realTrials||[],
+    listingCountries: ytd.listingCountries,
+    paid: {
+      total:paidRows.length, active:paidActive, churned:paidChurned, churnRate:paidChurnRate, avgDays:avgDaysPaid, totalRevenue,
+      byChannel:_groupCountC(paidRows,'channel'), byCountry:_groupCountC(paidRows,'country',15), byKeyword:_groupCountC(paidRows,'keyword',15),
+      byDay:_byDayC(paidRows), byWeek:_byWeekC(paidRows), byMonth:_byMonthC(paidRows),
+      churnByChannel:_churnByDimC(paidRows,'channel'), avgDaysByChannel:_avgDaysByDimC(paidRows,'channel'),
+      churnBuckets:_churnBucketsC(paidRows), byStamp, details:paidDetailsAll
+    },
+    lost: {
+      total:lostTotal, immediate:lostImmediate, shortTerm:lostShortTerm, longTerm:lostLongTerm,
+      byChannel:_groupCountC(lostRows,'channel'), byCountry:_groupCountC(lostRows,'country',15), byKeyword:_groupCountC(lostRows,'keyword',15),
+      churnBuckets:_churnBucketsC(lostRows), churnByChannel:_churnByDimC(lostRows,'channel'),
+      reasons: (ytd.lost&&ytd.lost.reasons)||[]
+    },
+    ads: ytd.ads,
+    surface: ytd.surface,
+    stamps: ytd.stamps,
+    trafficSources: ytd.trafficSources,
+    trialDomains: ytd.trialDomains,
+    shopifyKeywords: ytd.shopifyKeywords,
+    _from: from, _to: to
+  };
 }
 function manualRefresh(){
   const b=document.getElementById('rfbtn');b.classList.add('loading');
@@ -1744,11 +1941,50 @@ function mkMultiLine(id,labels,series,launchLines){
 }
 
 // ── DATA LISTING TAB ─────────────────────────────────────
-let _lstMetric='installs'; // 'installs' | 'trials'
+let _lstMetric='installs'; // 'installs' | 'trials' | 'mondayTrials'
+let _lstGran='monthly';    // 'daily' | 'weekly' | 'monthly'
 function setListingMetric(metric,btn){
   _lstMetric=metric;
   if(btn){btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
   renderListingCountries();
+}
+function setListingGran(gran,btn){
+  _lstGran=gran;
+  if(btn){btn.closest('.gran-tog').querySelectorAll('.gran-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  // Monday (real) todavía no tiene granularidad diaria/semanal — solo mensual.
+  const note=document.getElementById('lst-daily-note');
+  if(gran!=='monthly' && _lstMetric==='mondayTrials'){
+    _lstMetric='installs';
+    document.querySelectorAll('#page-listing .gran-tog').forEach(g=>{
+      const b=g.querySelector('#lst-btn-installs'); if(b){g.querySelectorAll('.gran-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');}
+    });
+    if(note) note.style.display='block';
+  } else if(note) note.style.display='none';
+  renderListingCountries();
+}
+// Agrupa un daily series (labels=fechas yyyy-MM-dd, series=[{country,values}])
+// en buckets semanales (lunes a lunes) — mismo criterio que installsByWeek()
+// del lado del servidor, para que Weekly acá se vea consistente con el
+// resto del dashboard.
+function _aggCountrySeriesWeekly(dates,series){
+  if(!dates.length) return {labels:[],series:series.map(s=>({country:s.country,values:[]}))};
+  const bucketOf=d=>{
+    const dt=new Date(d+'T12:00:00');
+    const day=dt.getDay();
+    const diff=dt.getDate()-day+(day===0?-6:1);
+    const mon=new Date(dt.getFullYear(),dt.getMonth(),diff);
+    const pad=n=>String(n).padStart(2,'0');
+    return `${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+  };
+  const buckets=dates.map(bucketOf);
+  const labels=[...new Set(buckets)].sort();
+  const idxByLabel={}; labels.forEach((l,i)=>idxByLabel[l]=i);
+  const aggSeries=series.map(s=>{
+    const values=new Array(labels.length).fill(0);
+    s.values.forEach((v,i)=>{ values[idxByLabel[buckets[i]]]+=Number(v)||0; });
+    return {country:s.country,values};
+  });
+  return {labels,series:aggSeries};
 }
 function renderListingCountries(){
   if(!_data||!_data.listingCountries) return;
@@ -1778,15 +2014,38 @@ function renderListingCountries(){
     if(lEmpty) lEmpty.style.display=(lc.launches||[]).length?'none':'block';
   }
 
-  // Chart: BR/ES/MX/FR/DE mensual (installs / trials Partner API / trials Monday según toggle) + líneas de lanzamiento
-  const months=lc.months||[];
-  const series=(_lstMetric==='trials'?lc.seriesTrials:_lstMetric==='mondayTrials'?lc.seriesMondayTrials:lc.series)||[];
+  // Chart: BR/ES/MX/FR/DE — installs / trials Partner API / trials Monday,
+  // en granularidad Daily / Weekly / Monthly (toggle) + líneas de lanzamiento.
+  let labels, series;
+  if(_lstGran==='monthly'){
+    labels=lc.months||[];
+    series=(_lstMetric==='trials'?lc.seriesTrials:_lstMetric==='mondayTrials'?lc.seriesMondayTrials:lc.series)||[];
+  } else if(_lstGran==='daily'){
+    labels=lc.dates||[];
+    series=(_lstMetric==='trials'?lc.seriesTrialsDaily:lc.seriesDaily)||[];
+  } else { // weekly
+    const src=(_lstMetric==='trials'?lc.seriesTrialsDaily:lc.seriesDaily)||[];
+    const agg=_aggCountrySeriesWeekly(lc.dates||[],src);
+    labels=agg.labels; series=agg.series;
+  }
+  const periodLbl=document.getElementById('lst-period-lbl');
+  if(periodLbl) periodLbl.firstChild.textContent=(_lstGran==='daily'?'Diario':_lstGran==='weekly'?'Semanal':'Mensual')+' — BR / ES / MX / FR / DE (2026)';
   const launchLines=(lc.launches||[]).map(l=>{
     const idx=series.findIndex(s=>s.country===l.country);
     const color=idx>=0?PAL[idx%PAL.length]:'#ff4363';
-    return {label:l.date.substring(0,7),color,tag:l.country};
+    let label;
+    if(_lstGran==='monthly') label=l.date.substring(0,7);
+    else if(_lstGran==='daily') label=l.date;
+    else { // weekly — encontrar el bucket (lunes) que contiene la fecha de lanzamiento
+      const dt=new Date(l.date+'T12:00:00');
+      const day=dt.getDay(); const diff=dt.getDate()-day+(day===0?-6:1);
+      const mon=new Date(dt.getFullYear(),dt.getMonth(),diff);
+      const pad=n=>String(n).padStart(2,'0');
+      label=`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+    }
+    return {label,color,tag:l.country};
   });
-  mkMultiLine('c-lst-mon',months,series,launchLines);
+  mkMultiLine('c-lst-mon',labels,series,launchLines);
 }
 
 function mkDo(id,labels,vals){
