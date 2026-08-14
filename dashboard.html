@@ -2021,15 +2021,26 @@ function renderListingCountries(){
     labels=lc.months||[];
     series=(_lstMetric==='trials'?lc.seriesTrials:_lstMetric==='mondayTrials'?lc.seriesMondayTrials:lc.series)||[];
   } else if(_lstGran==='daily'){
-    labels=lc.dates||[];
-    series=(_lstMetric==='trials'?lc.seriesTrialsDaily:lc.seriesDaily)||[];
+    // Todo el año día a día es ilegible (250+ puntos en zigzag) y esconde
+    // el efecto de un lanzamiento reciente — se acota a una ventana móvil
+    // de los últimos DAILY_WINDOW días para que se vea el antes/después.
+    const DAILY_WINDOW=45;
+    const allDates=lc.dates||[];
+    const allSeries=(_lstMetric==='trials'?lc.seriesTrialsDaily:lc.seriesDaily)||[];
+    const start=Math.max(0,allDates.length-DAILY_WINDOW);
+    labels=allDates.slice(start);
+    series=allSeries.map(s=>({country:s.country,values:s.values.slice(start)}));
   } else { // weekly
     const src=(_lstMetric==='trials'?lc.seriesTrialsDaily:lc.seriesDaily)||[];
     const agg=_aggCountrySeriesWeekly(lc.dates||[],src);
     labels=agg.labels; series=agg.series;
   }
   const periodLbl=document.getElementById('lst-period-lbl');
-  if(periodLbl) periodLbl.firstChild.textContent=(_lstGran==='daily'?'Diario':_lstGran==='weekly'?'Semanal':'Mensual')+' — BR / ES / MX / FR / DE (2026)';
+  if(periodLbl){
+    let suffix='(2026)';
+    if(_lstGran==='daily' && labels.length) suffix=`— últimos ${labels.length}d (${labels[0]} → ${labels[labels.length-1]})`;
+    periodLbl.firstChild.textContent=(_lstGran==='daily'?'Diario':_lstGran==='weekly'?'Semanal':'Mensual')+' — BR / ES / MX / FR / DE '+suffix;
+  }
   const launchLines=(lc.launches||[]).map(l=>{
     const idx=series.findIndex(s=>s.country===l.country);
     const color=idx>=0?PAL[idx%PAL.length]:'#ff4363';
