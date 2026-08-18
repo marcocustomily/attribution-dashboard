@@ -1590,12 +1590,72 @@ function _buildCustomView(ytd,from,to){
     },
     ads: ytd.ads,
     surface: ytd.surface,
-    stamps: ytd.stamps,
+    stamps: _buildStampsView(ytd,from,to,allRows,paidRows),
     trafficSources: ytd.trafficSources,
     trialDomains: ytd.trialDomains,
     shopifyKeywords: ytd.shopifyKeywords,
     _from: from, _to: to
   };
+}
+// Stamps para Custom range: los rawRows (stamp+fecha+plataforma) vienen del
+// año completo (ytd.stamps.rawRows) — acá se filtran al rango elegido y se
+// recalculan totales/plataforma/día/semana/mes. La tabla de conversión por
+// stamp (paid/trial/churn/revenue) se cruza con allRows/paidRows, que ya
+// vienen filtrados al mismo rango en _buildCustomView.
+function _buildStampsView(ytd,from,to,allRows,paidRows){
+  const raw=(ytd.stamps&&ytd.stamps.rawRows)||[];
+  const rows=raw.filter(r=>r.date&&r.date>=from&&r.date<=to);
+  const total=rows.length;
+  if(!total) return null;
+  const counts={},byPlat={},platMap={};
+  rows.forEach(r=>{
+    counts[r.stamp]=(counts[r.stamp]||0)+1;
+    const p=r.platform||'other';
+    byPlat[p]=(byPlat[p]||0)+1;
+    if(!platMap[r.stamp]) platMap[r.stamp]={shopify:0,etsy:0,woocommerce:0,other:0};
+    platMap[r.stamp][p]=(platMap[r.stamp][p]||0)+1;
+  });
+  const topStamps=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([l,v])=>({label:l,value:v}));
+  const byPlatform=Object.entries(byPlat).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v}));
+  const byMon={},byWk={},byDay={};
+  rows.forEach(r=>{
+    byMon[r.date.substring(0,7)]=(byMon[r.date.substring(0,7)]||0)+1;
+    byDay[r.date]=(byDay[r.date]||0)+1;
+    const dt=new Date(r.date+'T12:00:00');
+    const day=dt.getDay();const diff=dt.getDate()-day+(day===0?-6:1);
+    const mon=new Date(dt.getFullYear(),dt.getMonth(),diff);
+    const pad=n=>String(n).padStart(2,'0');
+    const wk=`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+    byWk[wk]=(byWk[wk]||0)+1;
+  });
+  const byMonth=Object.entries(byMon).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+  const byWeek=Object.entries(byWk).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+  const byDayArr=Object.entries(byDay).sort((a,b)=>a[0].localeCompare(b[0])).map(([l,v])=>({label:l,value:v}));
+
+  const instByStamp={},actByStamp={};
+  (allRows||[]).forEach(r=>{ if(!r.stamp) return; instByStamp[r.stamp]=(instByStamp[r.stamp]||0)+1; if(r.activated) actByStamp[r.stamp]=(actByStamp[r.stamp]||0)+1; });
+  const paidByStamp={},churnByStamp={},daysSumByStamp={},revByStamp={};
+  (paidRows||[]).forEach(r=>{
+    if(!r.stamp) return;
+    paidByStamp[r.stamp]=(paidByStamp[r.stamp]||0)+1;
+    if(r.status==='Churned') churnByStamp[r.stamp]=(churnByStamp[r.stamp]||0)+1;
+    daysSumByStamp[r.stamp]=(daysSumByStamp[r.stamp]||0)+(r.daysActive||0);
+    revByStamp[r.stamp]=(revByStamp[r.stamp]||0)+(Number(r.firstPayAmt)||0);
+  });
+  const table=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,100).map(([s,t])=>{
+    const pm=platMap[s]||{};
+    const paid=paidByStamp[s]||0;
+    return {
+      stamp:s, total:t, pct:((t/(total||1))*100).toFixed(1),
+      paid, trial:actByStamp[s]||0,
+      convRate:_cvRate(t,paid),
+      churnRate:_cvRate(t,churnByStamp[s]||0),
+      avgDays:paid>0?((daysSumByStamp[s]||0)/paid).toFixed(1):'0.0',
+      revenue:(revByStamp[s]||0).toFixed(2),
+      shopify:pm.shopify||0, etsy:pm.etsy||0, woo:pm.woocommerce||0, other:pm.other||0
+    };
+  });
+  return { total, topStamps, byPlatform, byMonth, byWeek, byDay:byDayArr, table };
 }
 function manualRefresh(){
   const b=document.getElementById('rfbtn');b.classList.add('loading');
