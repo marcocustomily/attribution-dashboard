@@ -318,6 +318,65 @@ body{
 }
 .drill-link:hover{color:var(--accent);}
 
+/* ── SHOP SEARCH (header) ── */
+.shop-search-rel{position:relative;display:flex;align-items:center;}
+.shop-search{
+  font-family:'Inter','Syne',sans-serif;font-size:12.5px;
+  padding:7px 10px 7px 30px;border-radius:7px;
+  border:1px solid var(--border);background:var(--surface-alt);color:var(--text);
+  width:190px;transition:border-color .15s,box-shadow .15s,width .15s;
+}
+.shop-search::placeholder{color:var(--text-3);}
+.shop-search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring);background:var(--surface);width:240px;}
+.shop-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:12px;pointer-events:none;}
+@media(max-width:900px){.shop-search{width:120px;}.shop-search:focus{width:170px;}}
+@media(max-width:700px){.shop-search-rel{display:none;}}
+
+/* ── SHOP DETAIL MODAL ── */
+#shop-modal{
+  display:none;position:fixed;inset:0;z-index:520;
+  background:rgba(10,14,26,.45);backdrop-filter:blur(4px);
+  animation:fadeIn .18s ease;
+}
+#shop-modal.show{display:flex;align-items:flex-start;justify-content:center;padding:48px 24px;}
+.shop-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  box-shadow:var(--shadow-lg);width:100%;max-width:720px;max-height:82vh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.shop-body{overflow-y:auto;flex:1;padding:0 22px 22px;}
+.shop-matches{display:flex;flex-direction:column;gap:6px;padding:14px 0;}
+.shop-match-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 12px;border-radius:8px;border:1px solid var(--border);
+  cursor:pointer;transition:all .15s;background:var(--surface);
+}
+.shop-match-item:hover{border-color:var(--accent);background:var(--surface-alt);}
+.shop-match-domain{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text);font-weight:600;}
+.shop-match-meta{font-size:11px;color:var(--text-3);}
+.shop-back{
+  font-family:'Inter','Syne',sans-serif;font-size:12px;font-weight:500;color:var(--text-3);
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:12px 0 4px;
+}
+.shop-back:hover{color:var(--accent);}
+.shop-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0 6px;flex-wrap:wrap;}
+.shop-card-domain{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent);text-decoration:none;}
+.shop-card-domain:hover{text-decoration:underline;}
+.shop-card-name{font-size:12px;color:var(--text-3);margin-top:2px;}
+.shop-status-pill{
+  font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px;
+  white-space:nowrap;
+}
+.shop-sec-lbl{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--text-3);margin:18px 0 8px;
+}
+.shop-fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 18px;}
+.shop-field{display:flex;flex-direction:column;gap:2px;padding:9px 11px;border-radius:8px;background:var(--surface-alt);}
+.shop-field-l{font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+.shop-field-v{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text);word-break:break-word;}
+.shop-empty{padding:32px 0;text-align:center;color:var(--text-3);font-size:13px;}
+
 /* ── ALERTS ── */
 #alerts-bar{display:none;padding:10px 28px;background:var(--surface);border-bottom:1px solid var(--border);}
 .al-inner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -666,6 +725,10 @@ body{
     </div>
   </div>
   <div class="hdr-right">
+    <div class="shop-search-rel">
+      <span class="shop-search-ico">🔍</span>
+      <input type="text" class="shop-search" id="shop-search" placeholder="Buscar shop (URL)…" onkeydown="if(event.key==='Enter')searchShop(this.value)">
+    </div>
     <div class="theme-tog" title="Cambiar tema">
       <button class="t-btn" data-t="light" onclick="setTheme('light')" title="Claro">☀</button>
       <button class="t-btn" data-t="dark"  onclick="setTheme('dark')"  title="Oscuro">◑</button>
@@ -1187,6 +1250,21 @@ body{
         <tbody id="drill-tbody"></tbody>
       </table></div>
     </div>
+  </div>
+</div>
+
+<div id="shop-modal" onclick="if(event.target===this)closeShopModal()">
+  <div class="shop-box">
+    <div class="drill-hdr">
+      <div class="drill-title">
+        <span>🔍 Shop Lookup</span>
+        <span class="drill-metric-tag" id="shop-query-tag">—</span>
+      </div>
+      <div class="drill-hdr-acts">
+        <button class="drill-close" onclick="closeShopModal()">✕</button>
+      </div>
+    </div>
+    <div class="shop-body" id="shop-body"></div>
   </div>
 </div>
 
@@ -2866,6 +2944,148 @@ function openLostBucketDrill(bucket){
   };
   _openGenericDrill('Non-Converters', labels[bucket]||bucket, _funnelDetails, filters[bucket], cols, renderer);
 }
+
+// ── SHOP SEARCH (buscador de un shop puntual) ────────────
+// Busca por dominio o URL dentro de los datos ya cargados en el browser
+// (mismo dataset que usa el preset YTD / el filtro "Todo el historial" de
+// arriba) — no pega contra el Web App (ver nota sobre _EXEC_URL roto más
+// abajo). Por eso el alcance real es "desde el 1/1 del año en curso", no
+// el historial completo del Sheet.
+function _escHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function _normShopQuery(q){
+  let v=String(q||'').trim().toLowerCase();
+  v=v.replace(/^https?:\/\//,'').replace(/^www\./,'');
+  v=v.split('/')[0].split('?')[0].split('#')[0];
+  return v.trim();
+}
+function _shopSearchSource(){
+  const order=['ytd','mtd','30d','7d'];
+  for(const p of order){
+    const d=_presetData[p];
+    if(d && d.funnel && d.funnel.details && d.funnel.details.length) return {rows:d.funnel.details, scope:p};
+  }
+  if(_data && _data.funnel && _data.funnel.details && _data.funnel.details.length) return {rows:_data.funnel.details, scope:_activePreset||'actual'};
+  return {rows:[], scope:''};
+}
+function _shopScopeLabel(scope){
+  return scope==='ytd' ? 'el año en curso (YTD)'
+    : scope==='mtd' ? 'el mes en curso (MTD)'
+    : (scope==='30d'||scope==='7d') ? 'los últimos '+scope.replace('d',' días')
+    : 'el rango de fechas elegido arriba';
+}
+function searchShop(raw){
+  const q=_normShopQuery(raw);
+  const box=document.getElementById('shop-body');
+  const tag=document.getElementById('shop-query-tag');
+  if(!q){ toast('Escribí la URL o el dominio del shop a buscar','error'); return; }
+  const {rows, scope}=_shopSearchSource();
+  tag.textContent=raw;
+  if(!rows.length){
+    box.innerHTML='<div class="shop-empty">Los datos todavía no terminaron de cargar — reintentá en unos segundos.</div>';
+    document.getElementById('shop-modal').classList.add('show');
+    document.body.style.overflow='hidden';
+    return;
+  }
+  const exact=rows.filter(r=>String(r.domain||'').toLowerCase().trim()===q);
+  const matches=exact.length ? exact : rows.filter(r=>{
+    const d=String(r.domain||'').toLowerCase();
+    const n=String(r.shopName||'').toLowerCase();
+    return d.includes(q) || (n && n.includes(q));
+  });
+  const scopeNote=`Búsqueda dentro de ${_shopScopeLabel(scope)}. Si el shop instaló antes de ese rango, probá con "Custom" arriba y volvé a buscar.`;
+  if(!matches.length){
+    box.innerHTML=`<div class="shop-empty">No se encontró ningún shop que coincida con "<strong>${_escHtml(raw)}</strong>".<br><span style="font-size:11px;">${scopeNote}</span></div>`;
+  } else if(matches.length===1){
+    _renderShopDetail(matches[0], matches, q, scopeNote);
+  } else {
+    _renderShopMatches(matches, q, scopeNote);
+  }
+  document.getElementById('shop-modal').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeShopModal(){
+  document.getElementById('shop-modal').classList.remove('show');
+  document.body.style.overflow='';
+}
+function _renderShopMatches(matches, q, scopeNote){
+  const box=document.getElementById('shop-body');
+  const shown=matches.slice(0,60);
+  const rowsHtml=shown.map((r,i)=>{
+    const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+    return `<div class="shop-match-item" onclick='_openShopMatchByIdx(${i})'>
+      <div><div class="shop-match-domain">${_escHtml(r.domain)}</div><div class="shop-match-meta">${_escHtml(r.shopName||'')||'&nbsp;'}</div></div>
+      <div style="text-align:right;"><div style="color:${sc};font-size:11px;font-weight:600;">${r.status||'—'}</div><div class="shop-match-meta">${r.installDate||'—'}</div></div>
+    </div>`;
+  }).join('');
+  window._shopMatchesCache=shown;
+  window._shopMatchesQ=q;
+  window._shopMatchesNote=scopeNote;
+  const more = matches.length>shown.length ? `<div class="shop-match-meta" style="text-align:center;padding:6px;">…y ${matches.length-shown.length} más. Afiná la búsqueda para acotar.</div>` : '';
+  box.innerHTML=`<div style="font-size:12px;color:var(--text-3);padding-top:14px;">${matches.length} shops coinciden con "<strong>${_escHtml(q)}</strong>" — hacé click en uno para ver el detalle completo.</div>
+    <div class="shop-matches">${rowsHtml}</div>${more}
+    <div class="shop-match-meta" style="padding-top:6px;">${scopeNote}</div>`;
+}
+function _openShopMatchByIdx(i){
+  const r=(window._shopMatchesCache||[])[i];
+  if(!r) return;
+  _renderShopDetail(r, window._shopMatchesCache, window._shopMatchesQ, window._shopMatchesNote, true);
+}
+function _renderShopDetail(r, allMatches, q, scopeNote, cameFromList){
+  const box=document.getElementById('shop-body');
+  const sc=r.status==='Active'?'var(--green)':r.status==='Churned'?'var(--red)':'var(--text-3)';
+  const scBg=r.status==='Active'?'var(--green-soft)':r.status==='Churned'?'var(--red-soft)':'var(--surface-alt)';
+  const back = (cameFromList && allMatches && allMatches.length>1)
+    ? `<div class="shop-back" onclick='_renderShopMatches(window._shopMatchesCache, window._shopMatchesQ, window._shopMatchesNote)'>← Volver a los ${allMatches.length} resultados</div>` : '';
+  const field=(l,v)=>`<div class="shop-field"><div class="shop-field-l">${l}</div><div class="shop-field-v">${(v===''||v==null)?'—':_escHtml(v)}</div></div>`;
+  box.innerHTML = `
+    ${back}
+    <div class="shop-card-top">
+      <div>
+        <a class="shop-card-domain" href="https://${r.domain}" target="_blank">${_escHtml(r.domain)}</a>
+        <div class="shop-card-name">${_escHtml(r.shopName||'')||'&nbsp;'}</div>
+      </div>
+      <span class="shop-status-pill" style="color:${sc};background:${scBg};">${r.status||'—'}</span>
+    </div>
+    <div class="shop-sec-lbl">Lifecycle</div>
+    <div class="shop-fields">
+      ${field('Install Date', r.installDate)}
+      ${field('Uninstall Date', r.uninstallDate)}
+      ${field('Días Activo', (r.daysActive||0)+'d')}
+      ${field('Activation Date', r.activationDate || (r.activated?'Sí, sin fecha':'—'))}
+      ${field('First Payment', r.firstPayDate)}
+      ${field('País', r.country)}
+    </div>
+    <div class="shop-sec-lbl">Atribución</div>
+    <div class="shop-fields">
+      ${field('Canal', r.channel)}
+      ${field('Campaign', r.campaign)}
+      ${field('Keyword', r.keyword)}
+      ${field('Source / Medium', r.sourceMedium)}
+      ${field('Surface Type', r.surfaceType)}
+      ${field('UTM Content', r.utmContent)}
+      ${field('Stamp', r.stamp)}
+    </div>
+    <div class="shop-sec-lbl">Revenue<span style="font-weight:400;text-transform:none;letter-spacing:0;"> · dentro de ${_shopScopeLabel((_shopSearchSource()||{}).scope)}</span></div>
+    <div class="shop-fields">
+      <div class="shop-field"><div class="shop-field-l">Revenue Suscripción</div><div class="shop-field-v" style="color:var(--green)">${_revCell(r)}</div></div>
+      <div class="shop-field"><div class="shop-field-l">Revenue Variable</div><div class="shop-field-v" style="color:var(--cyan)">${_usageRevCell(r)}</div></div>
+      <div class="shop-field"><div class="shop-field-l">Total</div><div class="shop-field-v" style="font-weight:700;">${_combinedRevCell(r)}</div></div>
+      ${field('First Payment Amount', r.firstPayAmt ? '$'+Number(r.firstPayAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : '—')}
+      ${field('Lifetime Revenue', r.lifetimeRevenue ? '$'+Number(r.lifetimeRevenue).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : '—')}
+      ${field('Lifetime Payments', r.lifetimePaymentCount || '—')}
+    </div>
+    <div class="shop-match-meta" style="padding-top:14px;">${scopeNote||''}</div>
+  `;
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('shop-modal').classList.contains('show')) closeShopModal();
+  if(e.key==='/' && document.activeElement && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){
+    const el=document.getElementById('shop-search');
+    if(el){ e.preventDefault(); el.focus(); }
+  }
+});
 
 // ── STAMPS HELPERS ───────────────────────────────────────
 function renderStTable(rows) {
