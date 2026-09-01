@@ -892,6 +892,11 @@ body{
 
 <!-- ADS -->
 <div class="page" id="page-ads">
+  <div class="ins warn" id="ads-custom-warn" style="display:none;margin-bottom:16px;">
+    <div class="ins-ico">⚠️</div>
+    <div class="ins-ttl">Mostrando datos de todo el año (YTD), no del rango Custom elegido</div>
+    <div class="ins-bod">El export publicado (Google Sheet → Apps Script → GitHub Pages) todavía no tiene la versión que manda los datos crudos para recalcular esta pestaña por fecha. Corré <code>refreshDashboardExports()</code> con el Code.gs actualizado y este aviso desaparece solo. Mientras tanto, elegí 7D / 30D / MTD / YTD arriba para ver esta pestaña filtrada correctamente.</div>
+  </div>
   <div class="sec"><span class="sec-title">Insights</span></div>
   <div class="insights" id="ins-ads"></div>
   <div class="sec"><span class="sec-title">Performance Overview</span></div>
@@ -1031,6 +1036,11 @@ body{
 
 <!-- TRAFFIC SOURCES -->
 <div class="page" id="page-traffic">
+  <div class="ins warn" id="traffic-custom-warn" style="display:none;margin-bottom:16px;">
+    <div class="ins-ico">⚠️</div>
+    <div class="ins-ttl">Mostrando datos de todo el año (YTD), no del rango Custom elegido</div>
+    <div class="ins-bod">El export publicado todavía no tiene la versión que manda los datos crudos para recalcular esta pestaña por fecha. Corré <code>refreshDashboardExports()</code> con el Code.gs actualizado y este aviso desaparece solo. Mientras tanto, elegí 7D / 30D / MTD / YTD arriba para ver esta pestaña filtrada correctamente.</div>
+  </div>
   <div class="sec"><span class="sec-title">Traffic Sources — Installs by Channel</span>
     <div class="sec-acts">
       <select id="cmp-sel" class="gran-btn" style="cursor:pointer;padding:6px 10px;" onchange="setCompare(this.value)">
@@ -1590,6 +1600,132 @@ function _avgDaysByDimC(rows,field){
   rows.forEach(r=>{ const k=r[field]||''; if(_isInvalidV(k)) return; sums[k]=(sums[k]||0)+(r.daysActive||0); counts[k]=(counts[k]||0)+1; });
   return Object.entries(sums).map(([l,s])=>({label:l,value:(s/counts[l]).toFixed(1)})).sort((a,b)=>b.value-a.value);
 }
+// FIX (sep 2026): Ads y Traffic Sources antes quedaban con los totales de
+// TODO el año en un rango Custom (ver comentario viejo más abajo). Ahora el
+// export YTD trae adsRawRows/trafficRawRows (filas con fecha) y estas dos
+// funciones replican en JS la misma agregación que hace el server
+// (Dashboard_Code.gs) para poder filtrar por el rango Custom exacto.
+// Único approximation conocido: el revenue/ROAS de Ads y Traffic Sources
+// usa firstPayAmt de shops cuyo INSTALL cae en el rango (mismo criterio que
+// ya usa el resto de _buildCustomView para Full Funnel/Paid), en vez del
+// revenue por fecha de PAGO que usa el server (periodByDomain) — ese dato
+// no viaja al cliente. Puede diferir un poco para merchants recurrentes
+// que instalaron antes del rango elegido.
+function _isInvalidAdsC(k){ const l=String(k||'').toLowerCase().trim(); return !l||l==='(not set)'||l==='(not provided)'||l==='not set'||l==='(organic)'; }
+function _normCampaignC(name){ return String(name||'').replace(/^Ad\d+\s+/i,'').replace(/\s+Ad\d+$/i,'').trim(); }
+function _buildAdsViewC(adsRaw,allRows,from,to){
+  const rows=(adsRaw||[]).filter(r=>r.date&&r.date>=from&&r.date<=to);
+  const shopifyAdsRows=rows.filter(r=>String(r.campaign).toLowerCase().includes('shopify'));
+  const totalAdSpend=shopifyAdsRows.reduce((s,r)=>s+r.cost,0);
+  const totalAdClicks=shopifyAdsRows.reduce((s,r)=>s+r.clicks,0);
+  const totalAdImpr=shopifyAdsRows.reduce((s,r)=>s+r.impressions,0);
+  const avgCPC=totalAdClicks>0?(totalAdSpend/totalAdClicks).toFixed(2):0;
+  const overallCTR=totalAdImpr>0?((totalAdClicks/totalAdImpr)*100).toFixed(2):0;
+
+  const paidInstalls=allRows.filter(r=>String(r.sourceMedium).toLowerCase().includes('cpc')&&String(r.campaign).toLowerCase().includes('shopify'));
+  const paidInstallPaid=paidInstalls.filter(r=>r.paid);
+  const overallCPI=paidInstalls.length>0&&totalAdSpend>0?(totalAdSpend/paidInstalls.length).toFixed(2):'N/A';
+  const overallCPA=paidInstallPaid.length>0&&totalAdSpend>0?(totalAdSpend/paidInstallPaid.length).toFixed(2):'N/A';
+
+  const adsByCampaign={};
+  rows.forEach(r=>{
+    const c=_normCampaignC(r.campaign);
+    if(!adsByCampaign[c]) adsByCampaign[c]={spend:0,clicks:0,impressions:0,conversions:0};
+    adsByCampaign[c].spend+=r.cost; adsByCampaign[c].clicks+=r.clicks;
+    adsByCampaign[c].impressions+=r.impressions; adsByCampaign[c].conversions+=r.conversions;
+  });
+
+  const attrByCampaign={};
+  allRows.filter(r=>String(r.sourceMedium).toLowerCase().includes('cpc')).forEach(r=>{
+    const k=_normCampaignC(r.campaign); if(_isInvalidAdsC(k)) return;
+    if(!attrByCampaign[k]) attrByCampaign[k]={installs:0,activated:0,paid:0,daysSum:0,churned:0,revenue:0};
+    attrByCampaign[k].installs++;
+    if(r.activated) attrByCampaign[k].activated++;
+    if(r.paid) attrByCampaign[k].paid++;
+    if(r.status==='Churned') attrByCampaign[k].churned++;
+    attrByCampaign[k].daysSum+=r.daysActive||0;
+    if(r.paid) attrByCampaign[k].revenue+=Number(r.firstPayAmt)||0;
+  });
+
+  const allCampaigns=Object.keys(adsByCampaign).filter(c=>String(c).toLowerCase().includes('shopify'));
+  const campaignTable=allCampaigns.map(c=>{
+    const ads=adsByCampaign[c]||{spend:0,clicks:0,impressions:0,conversions:0};
+    const attr=attrByCampaign[c]||{installs:0,activated:0,paid:0,daysSum:0,churned:0,revenue:0};
+    const gaConversions=Math.round(ads.conversions);
+    return {
+      campaign:c, spend:ads.spend.toFixed(2), clicks:ads.clicks, impressions:ads.impressions,
+      ctr:ads.impressions>0?((ads.clicks/ads.impressions)*100).toFixed(2):'0.00',
+      installs:gaConversions, trial:attr.activated, paid:attr.paid,
+      cpi:gaConversions>0&&ads.spend>0?(ads.spend/gaConversions).toFixed(2):'N/A',
+      cpa:attr.paid>0&&ads.spend>0?(ads.spend/attr.paid).toFixed(2):'N/A',
+      convRate:_cvRate(gaConversions,attr.paid),
+      churn:attr.installs>0?((attr.churned/attr.installs)*100).toFixed(1):'0.0',
+      avgDays:attr.installs>0?(attr.daysSum/attr.installs).toFixed(1):'0.0',
+      revenue:attr.revenue.toFixed(2),
+      roas:ads.spend>0?(attr.revenue/ads.spend).toFixed(2):'N/A'
+    };
+  }).sort((a,b)=>Number(b.spend)-Number(a.spend));
+
+  const adsByKw={}, attrByKw={};
+  rows.forEach(r=>{
+    if(_isInvalidAdsC(r.keyword)) return;
+    const nc=_normCampaignC(r.campaign);
+    if(!adsByKw[r.keyword]) adsByKw[r.keyword]={spend:0,clicks:0,campaign:nc};
+    adsByKw[r.keyword].spend+=r.cost; adsByKw[r.keyword].clicks+=r.clicks;
+    if(r.cost>0&&r.cost>=adsByKw[r.keyword].spend-r.cost) adsByKw[r.keyword].campaign=nc;
+  });
+  allRows.filter(r=>String(r.sourceMedium).toLowerCase().includes('cpc')).forEach(r=>{
+    const k=String(r.keyword||'').toLowerCase().trim(); if(_isInvalidAdsC(k)) return;
+    if(!attrByKw[k]) attrByKw[k]={installs:0,paid:0,churned:0,daysSum:0,revenue:0};
+    attrByKw[k].installs++;
+    if(r.paid) attrByKw[k].paid++;
+    if(r.status==='Churned') attrByKw[k].churned++;
+    attrByKw[k].daysSum+=r.daysActive||0;
+    if(r.paid) attrByKw[k].revenue+=Number(r.firstPayAmt)||0;
+  });
+  const allKws=new Set([...Object.keys(adsByKw).filter(k=>adsByKw[k].clicks>0),...Object.keys(attrByKw)]);
+  const keywordTable=Array.from(allKws).map(k=>{
+    const ads=adsByKw[k]||{spend:0,clicks:0,campaign:''};
+    const attr=attrByKw[k]||{installs:0,paid:0,churned:0,daysSum:0,revenue:0};
+    return {
+      keyword:k, campaign:ads.campaign, spend:ads.spend.toFixed(2), clicks:ads.clicks,
+      installs:attr.installs, paid:attr.paid,
+      cpi:attr.installs>0&&ads.spend>0?(ads.spend/attr.installs).toFixed(2):'N/A',
+      cpa:attr.paid>0&&ads.spend>0?(ads.spend/attr.paid).toFixed(2):'N/A',
+      convRate:_cvRate(attr.installs,attr.paid),
+      churn:attr.installs>0?((attr.churned/attr.installs)*100).toFixed(1):'0.0',
+      avgDays:attr.installs>0?(attr.daysSum/attr.installs).toFixed(1):'0.0',
+      revenue:attr.revenue.toFixed(2),
+      roas:ads.spend>0?(attr.revenue/ads.spend).toFixed(2):'N/A'
+    };
+  }).filter(r=>String(r.campaign).toLowerCase().includes('shopify')).sort((a,b)=>Number(b.spend)-Number(a.spend)).slice(0,25);
+
+  const weeklySpend=Object.entries(adsByCampaign).map(([l,v])=>({label:l,value:v.spend.toFixed(2)})).sort((a,b)=>b.value-a.value);
+
+  return {
+    totalSpend:totalAdSpend.toFixed(2), totalClicks:totalAdClicks, totalImpr:totalAdImpr,
+    avgCPC, overallCTR, paidInstalls:paidInstalls.length, paidInstallPaid:paidInstallPaid.length,
+    overallCPI, overallCPA, campaignTable, keywordTable, weeklySpend
+  };
+}
+function _buildTrafficViewC(trafficRaw,allRows,from,to){
+  const rows=(trafficRaw||[]).filter(r=>r.date&&r.date>=from&&r.date<=to);
+  const channelMap={};
+  rows.forEach(r=>{
+    const channel=r.channel||'Other';
+    if(!channelMap[channel]) channelMap[channel]={installs:0,trials:0,domains:[]};
+    channelMap[channel].installs++;
+    if(r.trial) channelMap[channel].trials++;
+    channelMap[channel].domains.push(r.domain);
+  });
+  const total=Object.values(channelMap).reduce((s,v)=>s+v.installs,0);
+  const paidByDomain={};
+  allRows.forEach(r=>{ if(r.paid) paidByDomain[String(r.domain||'').toLowerCase().trim()]=Number(r.firstPayAmt)||0; });
+  return Object.entries(channelMap).sort((a,b)=>b[1].installs-a[1].installs).map(([canal,v])=>{
+    const revenue=v.domains.reduce((s,d)=>s+(paidByDomain[String(d||'').toLowerCase().trim()]||0),0);
+    return { canal, installs:v.installs, pct:total>0?((v.installs/total)*100).toFixed(1):'0.0', trials:v.trials, revenue:revenue.toFixed(2) };
+  });
+}
 function _buildCustomView(ytd,from,to){
   const inRange=r=> r.installDate && r.installDate>=from && r.installDate<=to;
   const funnelDetails=(ytd.funnel.details||[]).filter(inRange);
@@ -1666,10 +1802,10 @@ function _buildCustomView(ytd,from,to){
       churnBuckets:_churnBucketsC(lostRows), churnByChannel:_churnByDimC(lostRows,'channel'),
       reasons: (ytd.lost&&ytd.lost.reasons)||[]
     },
-    ads: ytd.ads,
+    ads: ytd.adsRawRows ? _buildAdsViewC(ytd.adsRawRows,allRows,from,to) : ytd.ads,
     surface: ytd.surface,
     stamps: _buildStampsView(ytd,from,to,allRows,paidRows),
-    trafficSources: ytd.trafficSources,
+    trafficSources: ytd.trafficRawRows ? _buildTrafficViewC(ytd.trafficRawRows,allRows,from,to) : ytd.trafficSources,
     trialDomains: ytd.trialDomains,
     shopifyKeywords: ytd.shopifyKeywords,
     _from: from, _to: to
@@ -2429,6 +2565,16 @@ function render(data){
   window._kwDrillRows = [];
   try {
   clearBodies();
+  // Los warnings solo se muestran si el export YTD todavía NO trae las filas
+  // crudas (adsRawRows/trafficRawRows) — o sea, si el Apps Script de
+  // refreshDashboardExports() no se actualizó todavía. Una vez actualizado,
+  // Ads y Traffic Sources se recalculan de verdad para el rango Custom y el
+  // aviso desaparece solo.
+  const ytdForCheck = _presetData['ytd'];
+  const adsWarn = document.getElementById('ads-custom-warn');
+  if (adsWarn) adsWarn.style.display = (_activePreset==='custom' && ytdForCheck && !ytdForCheck.adsRawRows) ? '' : 'none';
+  const trafficWarn = document.getElementById('traffic-custom-warn');
+  if (trafficWarn) trafficWarn.style.display = (_activePreset==='custom' && ytdForCheck && !ytdForCheck.trafficRawRows) ? '' : 'none';
   const{funnel,paid,lost,ads,surface,stamps}=data;
 
   // Tab badges
