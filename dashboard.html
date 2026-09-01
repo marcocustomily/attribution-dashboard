@@ -1144,8 +1144,10 @@ body{
         <div class="pv-lbl">Métrica</div>
         <select id="pv-metric" class="pv-select" onchange="renderPivot()">
           <option value="installs">Installs</option>
+          <option value="trial">Trial (Activated)</option>
           <option value="paid">Paid Merchants</option>
           <option value="revenue">Revenue Total (USD)</option>
+          <option value="trialRate">Trial Rate% (installs→trial)</option>
           <option value="convRate">Conv% (installs→paid)</option>
           <option value="churnRate">Churn% (paid→churned)</option>
           <option value="avgDays">Avg Days Active</option>
@@ -1914,7 +1916,7 @@ function switchTab(name,el){
 
 // ── PIVOT ────────────────────────────────────────────────
 const _PV_LABELS={channel:'Canal',stamp:'Stamp',campaign:'Campaña',keyword:'Keyword',country:'País',month:'Mes',status:'Estado'};
-const _PV_METRIC_LABELS={installs:'Installs',paid:'Paid Merchants',revenue:'Revenue Total (USD)',convRate:'Conv%',churnRate:'Churn%',avgDays:'Avg Days'};
+const _PV_METRIC_LABELS={installs:'Installs',trial:'Trial (Activated)',paid:'Paid Merchants',revenue:'Revenue Total (USD)',trialRate:'Trial Rate%',convRate:'Conv%',churnRate:'Churn%',avgDays:'Avg Days'};
 const _PV_TOPN_ROWS=200, _PV_TOPN_COLS=20;
 
 function _pvDim(r,dim){
@@ -1955,9 +1957,10 @@ function renderPivot(){
     let k2='_';
     if(dim2){ k2=_pvDim(r,dim2); if(!topK2.has(k2)) k2='Otros'; }
     if(!groups[k1]) groups[k1]={};
-    if(!groups[k1][k2]) groups[k1][k2]={installs:0,paid:0,churned:0,daysSum:0,revenue:0};
+    if(!groups[k1][k2]) groups[k1][k2]={installs:0,trial:0,paid:0,churned:0,daysSum:0,revenue:0};
     const g=groups[k1][k2];
     g.installs++;
+    if(r.activated) g.trial++;
     if(r.paid) g.paid++;
     if(r.status==='Churned') g.churned++;
     g.daysSum+=Number(r.daysActive)||0;
@@ -1965,11 +1968,13 @@ function renderPivot(){
   });
 
   function metricVal(g){
-    if(!g) return (metric==='convRate'||metric==='churnRate'||metric==='avgDays') ? null : 0;
+    if(!g) return (metric==='convRate'||metric==='churnRate'||metric==='trialRate'||metric==='avgDays') ? null : 0;
     switch(metric){
       case 'installs':  return g.installs;
+      case 'trial':     return g.trial;
       case 'paid':      return g.paid;
       case 'revenue':   return g.revenue;
+      case 'trialRate': return g.installs>0 ? (g.trial/g.installs*100) : null;
       case 'convRate':  return g.installs>0 ? (g.paid/g.installs*100) : null;
       case 'churnRate': return g.paid>0 ? (g.churned/g.paid*100) : null;
       case 'avgDays':   return g.installs>0 ? (g.daysSum/g.installs) : null;
@@ -1979,7 +1984,7 @@ function renderPivot(){
   function fmtVal(v){
     if(v===null||v===undefined) return '—';
     if(metric==='revenue') return '$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-    if(metric==='convRate'||metric==='churnRate') return Number(v).toFixed(1)+'%';
+    if(metric==='convRate'||metric==='churnRate'||metric==='trialRate') return Number(v).toFixed(1)+'%';
     if(metric==='avgDays') return Number(v).toFixed(1)+'d';
     return Number(v).toLocaleString();
   }
