@@ -927,6 +927,26 @@ body{
     </tr></thead>
     <tbody id="a-camp"></tbody>
   </table></div></div>
+  <div class="sec">Campaigns (Website)<span class="itip" data-tip="Campañas de Google Ads cuyo nombre NO contiene &quot;shopify&quot; — o sea, todo lo que no cae en la tabla de arriba (tráfico a customily.com u otro destino, no al listing de Shopify)." onmouseenter="_itipShow(this)" onmouseleave="_itipHide()" onclick="event.stopPropagation();_itipToggle(this)">?</span><div class="sec-acts"><button class="sec-act" onclick="expTbl('a-camp-web','campaigns-website')">↓ CSV</button></div></div>
+  <div class="cc" style="margin-bottom:24px;"><div class="tbl-wrap"><table class="tbl" id="camp-web-tbl">
+    <thead><tr>
+      <th onclick="srt('camp-web-tbl',0)">Campaign</th>
+      <th class="num" onclick="srt('camp-web-tbl',1)">Spend</th>
+      <th class="num" onclick="srt('camp-web-tbl',2)">Clicks</th>
+      <th class="num" onclick="srt('camp-web-tbl',3)">CTR</th>
+      <th class="num" onclick="srt('camp-web-tbl',4)">Installs</th>
+      <th class="num" onclick="srt('camp-web-tbl',5)" style="color:var(--cyan)">Trial</th>
+      <th class="num" onclick="srt('camp-web-tbl',6)">Paid Mrchs</th>
+      <th class="num" onclick="srt('camp-web-tbl',7)">Conv%</th>
+      <th class="num" onclick="srt('camp-web-tbl',8)">CPI</th>
+      <th class="num" onclick="srt('camp-web-tbl',9)">CPA</th>
+      <th class="num" onclick="srt('camp-web-tbl',10)">Drop%</th>
+      <th class="num" onclick="srt('camp-web-tbl',11)">Avg Days</th>
+      <th class="num" onclick="srt('camp-web-tbl',12)">Revenue Total</th>
+      <th class="num" onclick="srt('camp-web-tbl',13)">ROAS</th>
+    </tr></thead>
+    <tbody id="a-camp-web"></tbody>
+  </table></div></div>
   <div class="sec">Keywords (Shopify only)<div class="sec-acts"><button class="sec-act" onclick="expTbl('a-kw','kw-ads')">↓ CSV</button></div></div>
   <div class="cc" style="margin-bottom:24px;"><div class="tbl-wrap"><table class="tbl" id="kw-ads-tbl">
     <thead><tr>
@@ -1649,24 +1669,28 @@ function _buildAdsViewC(adsRaw,allRows,from,to){
     if(r.paid) attrByCampaign[k].revenue+=Number(r.firstPayAmt)||0;
   });
 
-  const allCampaigns=Object.keys(adsByCampaign).filter(c=>String(c).toLowerCase().includes('shopify'));
-  const campaignTable=allCampaigns.map(c=>{
-    const ads=adsByCampaign[c]||{spend:0,clicks:0,impressions:0,conversions:0};
-    const attr=attrByCampaign[c]||{installs:0,activated:0,paid:0,daysSum:0,churned:0,revenue:0};
-    const gaConversions=Math.round(ads.conversions);
-    return {
-      campaign:c, spend:ads.spend.toFixed(2), clicks:ads.clicks, impressions:ads.impressions,
-      ctr:ads.impressions>0?((ads.clicks/ads.impressions)*100).toFixed(2):'0.00',
-      installs:gaConversions, trial:attr.activated, paid:attr.paid,
-      cpi:gaConversions>0&&ads.spend>0?(ads.spend/gaConversions).toFixed(2):'N/A',
-      cpa:attr.paid>0&&ads.spend>0?(ads.spend/attr.paid).toFixed(2):'N/A',
-      convRate:_cvRate(gaConversions,attr.paid),
-      churn:attr.installs>0?((attr.churned/attr.installs)*100).toFixed(1):'0.0',
-      avgDays:attr.installs>0?(attr.daysSum/attr.installs).toFixed(1):'0.0',
-      revenue:attr.revenue.toFixed(2),
-      roas:ads.spend>0?(attr.revenue/ads.spend).toFixed(2):'N/A'
-    };
-  }).sort((a,b)=>Number(b.spend)-Number(a.spend));
+  function _buildCampaignTableC(campaignKeys){
+    return campaignKeys.map(c=>{
+      const ads=adsByCampaign[c]||{spend:0,clicks:0,impressions:0,conversions:0};
+      const attr=attrByCampaign[c]||{installs:0,activated:0,paid:0,daysSum:0,churned:0,revenue:0};
+      const gaConversions=Math.round(ads.conversions);
+      return {
+        campaign:c, spend:ads.spend.toFixed(2), clicks:ads.clicks, impressions:ads.impressions,
+        ctr:ads.impressions>0?((ads.clicks/ads.impressions)*100).toFixed(2):'0.00',
+        installs:gaConversions, trial:attr.activated, paid:attr.paid,
+        cpi:gaConversions>0&&ads.spend>0?(ads.spend/gaConversions).toFixed(2):'N/A',
+        cpa:attr.paid>0&&ads.spend>0?(ads.spend/attr.paid).toFixed(2):'N/A',
+        convRate:_cvRate(gaConversions,attr.paid),
+        churn:attr.installs>0?((attr.churned/attr.installs)*100).toFixed(1):'0.0',
+        avgDays:attr.installs>0?(attr.daysSum/attr.installs).toFixed(1):'0.0',
+        revenue:attr.revenue.toFixed(2),
+        roas:ads.spend>0?(attr.revenue/ads.spend).toFixed(2):'N/A'
+      };
+    }).sort((a,b)=>Number(b.spend)-Number(a.spend));
+  }
+  const allCampaignKeys=Object.keys(adsByCampaign);
+  const campaignTable=_buildCampaignTableC(allCampaignKeys.filter(c=>String(c).toLowerCase().includes('shopify')));
+  const campaignTableWeb=_buildCampaignTableC(allCampaignKeys.filter(c=>!String(c).toLowerCase().includes('shopify')));
 
   const adsByKw={}, attrByKw={};
   rows.forEach(r=>{
@@ -1707,7 +1731,7 @@ function _buildAdsViewC(adsRaw,allRows,from,to){
   return {
     totalSpend:totalAdSpend.toFixed(2), totalClicks:totalAdClicks, totalImpr:totalAdImpr,
     avgCPC, overallCTR, paidInstalls:paidInstalls.length, paidInstallPaid:paidInstallPaid.length,
-    overallCPI, overallCPA, campaignTable, keywordTable, weeklySpend
+    overallCPI, overallCPA, campaignTable, campaignTableWeb, keywordTable, weeklySpend
   };
 }
 function _buildTrafficViewC(trafficRaw,allRows,from,to){
@@ -1878,7 +1902,7 @@ function manualRefresh(){
   loadFromPublishedCsv(true).finally(()=>b.classList.remove('loading'));
 }
 function destroyAll(){Object.values(_ch).forEach(c=>{try{c.destroy();}catch(e){}});_ch={};}
-function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-kw','st-tbl','p-stamp-tbody','pv-tbody','lst-rank-tbody','lst-launch-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
+function clearBodies(){['ch-tbody','co-tbody','kw-tbody','a-camp','a-camp-web','a-kw','st-tbl','p-stamp-tbody','pv-tbody','lst-rank-tbody','lst-launch-tbody'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});}
 function freshCanvas(id){
   const o=document.getElementById(id);if(!o) return null;
   const n=document.createElement('canvas');n.id=id;
@@ -2054,7 +2078,7 @@ function expTbl(tbid,name){
   a.download=`customily-${name}-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();toast('Exportado: '+name+'.csv','success');
 }
-function expAll(){[['ch-tbody','channels'],['co-tbody','countries'],['kw-tbody','keywords'],['a-camp','campaigns'],['a-kw','kw-ads']].forEach(([i,n])=>expTbl(i,n));}
+function expAll(){[['ch-tbody','channels'],['co-tbody','countries'],['kw-tbody','keywords'],['a-camp','campaigns'],['a-camp-web','campaigns-website'],['a-kw','kw-ads']].forEach(([i,n])=>expTbl(i,n));}
 
 // ── ALERTS & INSIGHTS ────────────────────────────────────
 function buildAlerts(d){
@@ -2737,6 +2761,17 @@ function render(data){
     const roasCell=r.roas==='N/A'?'N/A':`${r.roas}x`;
     tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td><td class="num" style="color:var(--green)">$${Number(r.revenue).toLocaleString()}</td><td class="num">${roasCell}</td>`;
     atb.appendChild(tr);
+  });
+  const atbWeb=document.getElementById('a-camp-web');
+  (ads.campaignTableWeb||[]).forEach(r=>{
+    const tr=document.createElement('tr');
+    const sc=r.campaign.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const instCell=`<span title="Conversiones reportadas por Google Ads">${r.installs}</span>`;
+    const trialCell=r.trial>0?`<span class="drill-link" style="color:var(--cyan);font-weight:500;" onclick="openCampaignDrill('${sc}','trial')">${r.trial}</span>`:`<span style="color:var(--cyan)">0</span>`;
+    const paidCell=r.paid>0?`<span class="drill-link" style="color:var(--green)" onclick="openCampaignDrill('${sc}','paid')">${r.paid}</span>`:`<span style="color:var(--green)">0</span>`;
+    const roasCell=r.roas==='N/A'?'N/A':`${r.roas}x`;
+    tr.innerHTML=`<td>${r.campaign}</td><td class="num">$${Number(r.spend).toLocaleString()}</td><td class="num">${r.clicks.toLocaleString()}</td><td class="num dim">${r.ctr}%</td><td class="num">${instCell}</td><td class="num">${trialCell}</td><td class="num">${paidCell}</td><td class="num">${cpill(r.convRate)}</td><td class="num">${npill(r.cpi)}</td><td class="num">${npill(r.cpa)}</td><td class="num">${chpill(r.churn)}</td><td class="num dim">${r.avgDays}d</td><td class="num" style="color:var(--green)">$${Number(r.revenue).toLocaleString()}</td><td class="num">${roasCell}</td>`;
+    atbWeb.appendChild(tr);
   });
   const ktb=document.getElementById('a-kw');
   ads.keywordTable.forEach(r=>{
