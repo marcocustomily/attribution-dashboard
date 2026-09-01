@@ -2428,6 +2428,7 @@ function render(data){
   window._tsDrillRows = [];
   window._kwDrillRows = [];
   try {
+  clearBodies();
   const{funnel,paid,lost,ads,surface,stamps}=data;
 
   // Tab badges
