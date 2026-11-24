@@ -995,6 +995,30 @@ body{
     <div class="card" style="--card-accent:var(--green);--card-color:var(--green)"><div class="card-lbl">WooCommerce</div><div class="card-val" id="st-woo">—</div><div class="card-sub">installs</div></div>
     <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">Unique Stamps</div><div class="card-val" id="st-unique">—</div><div class="card-sub">tipos de entrada</div></div>
   </div>
+  <!-- STAMPS PACING (mes en curso vs objetivo) -->
+  <div id="stp-wrap" style="display:none;">
+    <div class="sec"><span class="sec-title">🎯 Pacing vs objetivo mensual</span>
+      <div class="sec-acts"><span class="bdg" id="stp-month">—</span></div>
+    </div>
+    <div class="g5" style="margin-bottom:16px;">
+      <div class="card" style="--card-accent:var(--cyan);--card-color:var(--cyan)"><div class="card-lbl">Acumulado MTD</div><div class="card-val" id="stp-actual">—</div><div class="card-sub" id="stp-actual-sub">—</div></div>
+      <div class="card" style="--card-accent:var(--purple);--card-color:var(--purple)"><div class="card-lbl">Esperado a hoy</div><div class="card-val" id="stp-expected">—</div><div class="card-sub" id="stp-expected-sub">—</div></div>
+      <div class="card" id="stp-diff-card"><div class="card-lbl">Diferencia</div><div class="card-val" id="stp-diff">—</div><div class="card-sub" id="stp-diff-sub">—</div></div>
+      <div class="card" style="--card-accent:var(--yellow);--card-color:var(--yellow)"><div class="card-lbl">Proyección fin de mes</div><div class="card-val" id="stp-proj">—</div><div class="card-sub" id="stp-proj-sub">al ritmo actual</div></div>
+      <div class="card" style="--card-accent:var(--accent);--card-color:var(--accent)"><div class="card-lbl">Ritmo necesario</div><div class="card-val" id="stp-need">—</div><div class="card-sub" id="stp-need-sub">stamps/día restantes</div></div>
+    </div>
+    <div class="cc" style="margin-bottom:24px;padding:20px 28px 28px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-3);margin-bottom:6px;">
+        <span id="stp-bar-lbl">—</span><span id="stp-bar-pct">—</span>
+      </div>
+      <div style="position:relative;height:10px;border-radius:6px;background:var(--surface-alt);overflow:hidden;margin-bottom:18px;">
+        <div id="stp-bar" style="position:absolute;left:0;top:0;bottom:0;width:0;border-radius:6px;background:var(--cyan);transition:width .4s;"></div>
+        <div id="stp-bar-mark" title="Esperado a hoy" style="position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text);opacity:.55;left:0;"></div>
+      </div>
+      <div class="cc-ttl">Acumulado diario vs ideal <span class="bdg">objetivo lineal</span></div>
+      <div style="position:relative;height:220px;"><canvas id="c-stp-cum"></canvas></div>
+    </div>
+  </div>
   <div class="sec">Installs Over Time
     <div class="sec-acts" style="gap:10px;">
       <div style="position:relative;display:flex;align-items:center;" id="st-chart-ac-wrap">
@@ -2145,6 +2169,77 @@ function startTimer(){
   u();_ri=setInterval(u,20000);
 }
 
+// ── STAMPS PACING ────────────────────────────────────────
+// Objetivo mensual lineal: esperado(día) = goal × día / díasDelMes.
+// Viene de getDashboardData().stampsPacing (mes calendario actual).
+var _stPacing=null;
+function renderStampsPacing(){
+  const p=_stPacing, wrap=document.getElementById('stp-wrap');
+  if(!wrap) return;
+  if(!p||!p.daily||!p.daily.length){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  const set=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+  const cum=[]; let acc=0; p.daily.forEach(v=>{acc+=v; cum.push(acc);});
+  const today=Math.min(p.today,p.daysInMonth);
+  const perDay=p.goal/p.daysInMonth;
+  const actual=cum[today-1]||0;
+  const expected=perDay*today;
+  const diff=actual-expected;
+  const pacePct=expected>0?(actual/expected*100):0;
+  // Si el export viene atrasado, el ritmo se calcula sobre los días con datos
+  const rateDays=(p.lastDataDay&&p.lastDataDay<today)?p.lastDataDay:today;
+  const proj=rateDays>0?Math.round(actual/rateDays*p.daysInMonth):0;
+  const remDays=p.daysInMonth-today;
+  const need=remDays>0?Math.max(0,(p.goal-actual)/remDays):0;
+  const [yy,mm]=p.month.split('-');
+  const monthLbl=new Date(+yy,+mm-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+
+  set('stp-month',monthLbl+' · objetivo '+p.goal);
+  set('stp-actual',actual.toLocaleString());
+  set('stp-actual-sub',(actual/p.goal*100).toFixed(1)+'% del objetivo');
+  set('stp-expected',Math.round(expected).toLocaleString());
+  set('stp-expected-sub','día '+today+' de '+p.daysInMonth+' · '+perDay.toFixed(1)+'/día');
+  set('stp-diff',(diff>=0?'+':'')+Math.round(diff).toLocaleString());
+  set('stp-diff-sub',pacePct.toFixed(0)+'% del ritmo esperado');
+  const dc=document.getElementById('stp-diff-card');
+  if(dc){const c=diff>=0?'var(--green)':'var(--red)'; dc.style.setProperty('--card-accent',c); dc.style.setProperty('--card-color',c);}
+  set('stp-proj',proj.toLocaleString());
+  set('stp-proj-sub',(proj>=p.goal?'✅ ':'⚠️ ')+'al ritmo actual ('+(proj-p.goal>=0?'+':'')+(proj-p.goal)+' vs objetivo)');
+  set('stp-need',remDays>0?need.toFixed(1):'—');
+  set('stp-need-sub',remDays>0?('para llegar a '+p.goal+' en '+remDays+' días'):'último día del mes');
+
+  // Aviso si el export de Stamps viene atrasado respecto de hoy
+  if(p.lastDataDay && p.lastDataDay<today){
+    const expAtData=Math.round(perDay*p.lastDataDay);
+    set('stp-actual-sub','datos hasta el día '+p.lastDataDay+' · esperado ahí: '+expAtData);
+  }
+
+  // Barra de progreso: real vs objetivo, con marca del esperado a hoy
+  const bar=document.getElementById('stp-bar'), mark=document.getElementById('stp-bar-mark');
+  if(bar){ bar.style.width=Math.min(100,actual/p.goal*100)+'%'; bar.style.background=diff>=0?'var(--green)':'var(--red)'; }
+  if(mark) mark.style.left=Math.min(100,expected/p.goal*100)+'%';
+  set('stp-bar-lbl',actual+' / '+p.goal+' stamps');
+  set('stp-bar-pct','esperado a hoy: '+(expected/p.goal*100).toFixed(0)+'%');
+
+  // Chart: acumulado real (hasta hoy) vs línea ideal
+  const id='c-stp-cum';
+  if(!document.getElementById(id)) return;
+  _destroyChart(id);
+  const{muted,grid}=gc();
+  const labels=p.daily.map((_,i)=>String(i+1));
+  const real=cum.map((v,i)=>i<today?v:null);
+  const ideal=p.daily.map((_,i)=>+(perDay*(i+1)).toFixed(1));
+  const realColor=diff>=0?'#0f8f5e':'#c53050';
+  _ch[id]=new Chart(document.getElementById(id),{type:'line',
+    data:{labels,datasets:[
+      {label:'Real acumulado',data:real,borderColor:realColor,backgroundColor:'transparent',borderWidth:2.5,fill:false,tension:.25,pointRadius:2,pointBackgroundColor:realColor,spanGaps:false},
+      {label:'Ideal ('+p.goal+'/mes)',data:ideal,borderColor:'#9b5de5',borderDash:[6,4],backgroundColor:'transparent',borderWidth:1.5,fill:false,tension:0,pointRadius:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,labels:{color:muted,boxWidth:12}},tooltip:{callbacks:{title:it=>'Día '+it[0].label}}},
+      scales:{x:{grid:{display:false},ticks:{color:muted,maxTicksLimit:16}},y:{grid:{color:grid},ticks:{color:muted,precision:0},suggestedMax:p.goal}}}});
+}
+
 // ── CHART FACTORIES ──────────────────────────────────────
 function _destroyChart(id){if(_ch[id]){try{_ch[id].destroy();}catch(e){}delete _ch[id];}}
 function mkLine(id,labels,vals,color){
@@ -2787,6 +2882,10 @@ function render(data){
   // SURFACE
   if(surface.surfaceType.length) mkDo('c-srf',surface.surfaceType.map(r=>r.label),surface.surfaceType.map(r=>r.value));
   if(surface.surfaceKw.length) mkHBar('c-skw',surface.surfaceKw.map(r=>r.label),surface.surfaceKw.map(r=>r.value),'#0891b2');
+
+  // STAMPS PACING (siempre mes en curso, no depende del rango)
+  if(data.stampsPacing) _stPacing=data.stampsPacing;
+  renderStampsPacing();
 
   // STAMPS
   if(stamps) {
@@ -3648,5 +3747,4 @@ function loadFromPublishedCsv(isManualRefresh){
 })();
 </script>
 </body>
-  
 </html>
